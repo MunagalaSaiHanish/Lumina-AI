@@ -16,9 +16,7 @@ from services.llm_service import (
     ask_question
 )
 
-# ----------------------------------------------------
-# PAGE CONFIG
-# ----------------------------------------------------
+#page setup
 
 st.set_page_config(
     page_title="AI Knowledge Assistant",
@@ -26,9 +24,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# ----------------------------------------------------
-# SESSION STATE
-# ----------------------------------------------------
 
 if "transcript" not in st.session_state:
     st.session_state.transcript = ""
@@ -42,9 +37,7 @@ if "chunks" not in st.session_state:
 if "vector_store" not in st.session_state:
     st.session_state.vector_store = None
 
-# ----------------------------------------------------
-# SIDEBAR
-# ----------------------------------------------------
+#side bar
 
 with st.sidebar:
 
@@ -75,9 +68,10 @@ Pipeline
 
     st.success("✅ RAG Enabled")
 
-# ----------------------------------------------------
-# HEADER
-# ----------------------------------------------------
+#Main app
+
+
+#header
 
 st.title("🎥 AI Knowledge Assistant")
 
@@ -87,17 +81,13 @@ st.caption(
 
 st.divider()
 
-# ----------------------------------------------------
-# INPUT
-# ----------------------------------------------------
+#input of YT url
 
 video_url = st.text_input(
     "🔗 Paste YouTube URL"
 )
 
-# ----------------------------------------------------
-# ANALYZE
-# ----------------------------------------------------
+#extract video id, chunks, embeddings
 
 if st.button(
     "🚀 Analyze Video",
@@ -152,9 +142,7 @@ if st.button(
                 "✅ Video Analysis Complete!"
             )
 
-# ----------------------------------------------------
-# TRANSCRIPT
-# ----------------------------------------------------
+#trancript
 
 if st.session_state.transcript:
 
@@ -168,9 +156,7 @@ if st.session_state.transcript:
         height=350
     )
 
-# ----------------------------------------------------
-# SUMMARY
-# ----------------------------------------------------
+# AI summary
 
 if st.session_state.summary:
 
@@ -180,9 +166,8 @@ if st.session_state.summary:
 
     st.write(st.session_state.summary)
 
-# ----------------------------------------------------
-# CHAT
-# ----------------------------------------------------
+
+#ask Question
 
 if st.session_state.vector_store is not None:
 
