@@ -7,27 +7,31 @@ from services.transcript_service import (
 )
 from services.chunk_service import chunk_text
 from services.embedding_service import generate_embeddings
-from services.vector_store import create_vector_store
-from services.retriever_service import retrieve_chunks
-from services.llm_service import summarize, ask_question
-
-
-st.set_page_config(
-    page_title="AI Video Analyzer",
-    page_icon="🎥",
-    layout="centered"
+from services.vector_store import (
+    create_vector_store,
+    retrieve_chunks
+)
+from services.llm_service import (
+    summarize,
+    ask_question
 )
 
-st.title("🎥 AI Video Analyzer")
+# ----------------------------------------------------
+# PAGE CONFIG
+# ----------------------------------------------------
 
-# -----------------------------
-# Initialize Session State
-# -----------------------------
-if "knowledge_ready" not in st.session_state:
-    st.session_state.knowledge_ready = False
+st.set_page_config(
+    page_title="AI Knowledge Assistant",
+    page_icon="🎥",
+    layout="wide"
+)
 
-if "plain_text" not in st.session_state:
-    st.session_state.plain_text = ""
+# ----------------------------------------------------
+# SESSION STATE
+# ----------------------------------------------------
+
+if "transcript" not in st.session_state:
+    st.session_state.transcript = ""
 
 if "summary" not in st.session_state:
     st.session_state.summary = ""
@@ -35,117 +39,197 @@ if "summary" not in st.session_state:
 if "chunks" not in st.session_state:
     st.session_state.chunks = []
 
-if "index" not in st.session_state:
-    st.session_state.index = None
+if "vector_store" not in st.session_state:
+    st.session_state.vector_store = None
 
-# -----------------------------
-# Analyze Section
-# -----------------------------
+# ----------------------------------------------------
+# SIDEBAR
+# ----------------------------------------------------
 
-video_url = st.text_input("Paste YouTube URL")
+with st.sidebar:
 
-if st.button("Analyze Video"):
+    st.title("🎥 AI Knowledge Assistant")
+
+    st.markdown("---")
+
+    st.subheader("About")
+
+    st.write("""
+This application uses Retrieval-Augmented Generation (RAG)
+to analyze YouTube videos.
+
+Pipeline
+
+• Transcript
+
+• Chunking
+
+• Embeddings
+
+• FAISS
+
+• Qwen
+""")
+
+    st.markdown("---")
+
+    st.success("✅ RAG Enabled")
+
+# ----------------------------------------------------
+# HEADER
+# ----------------------------------------------------
+
+st.title("🎥 AI Knowledge Assistant")
+
+st.caption(
+    "Analyze YouTube videos using AI"
+)
+
+st.divider()
+
+# ----------------------------------------------------
+# INPUT
+# ----------------------------------------------------
+
+video_url = st.text_input(
+    "🔗 Paste YouTube URL"
+)
+
+# ----------------------------------------------------
+# ANALYZE
+# ----------------------------------------------------
+
+if st.button(
+    "🚀 Analyze Video",
+    use_container_width=True
+):
 
     video_id = extract_video_id(video_url)
 
     if video_id is None:
+
         st.error("Invalid YouTube URL")
 
     else:
 
-        raw_transcript = get_transcript(video_id)
+        with st.spinner("Fetching Transcript..."):
+
+            raw_transcript = get_transcript(video_id)
 
         if raw_transcript is None:
 
-            st.warning(
-                "Transcript couldn't be fetched.\n"
-                "YouTube may have blocked the request."
+            st.error(
+                "Couldn't fetch transcript."
             )
 
         else:
 
-            # Transcript
             plain_text = transcript_to_text(raw_transcript)
 
-            # Chunking
-            chunks = chunk_text(plain_text)
+            st.session_state.transcript = plain_text
 
-            # Embeddings
-            embeddings = generate_embeddings(chunks)
-
-            # Vector Store
-            index = create_vector_store(embeddings)
-
-            # Summary
             with st.spinner("Generating Summary..."):
+
                 summary = summarize(plain_text)
 
-            # Save in Session
-            st.session_state.plain_text = plain_text
             st.session_state.summary = summary
+
+            with st.spinner("Building Knowledge Base..."):
+
+                chunks = chunk_text(plain_text)
+
+                embeddings = generate_embeddings(chunks)
+
+                vector_store = create_vector_store(
+                    embeddings
+                )
+
             st.session_state.chunks = chunks
-            st.session_state.index = index
-            st.session_state.knowledge_ready = True
 
-            st.success("✅ Knowledge Base Created Successfully!")
+            st.session_state.vector_store = vector_store
 
-# -----------------------------
-# Display Stored Results
-# -----------------------------
+            st.success(
+                "✅ Video Analysis Complete!"
+            )
 
-if st.session_state.knowledge_ready:
+# ----------------------------------------------------
+# TRANSCRIPT
+# ----------------------------------------------------
 
-    st.subheader("📄 Transcript")
-
-    st.text_area(
-        "Transcript",
-        st.session_state.plain_text,
-        height=250
-    )
-
-    st.subheader("📦 Chunks")
-
-    st.write(f"Total Chunks : {len(st.session_state.chunks)}")
-
-    for i, chunk in enumerate(st.session_state.chunks):
-
-        with st.expander(f"Chunk {i+1}"):
-
-            st.write(chunk)
-
-    st.subheader("📝 Summary")
-
-    st.write(st.session_state.summary)
+if st.session_state.transcript:
 
     st.divider()
 
-    st.subheader("💬 Chat with the Video")
+    st.subheader("📜 Video Transcript")
 
-    question = st.text_input("Ask a Question")
+    st.text_area(
+        "",
+        st.session_state.transcript,
+        height=350
+    )
 
-    if st.button("Ask"):
+# ----------------------------------------------------
+# SUMMARY
+# ----------------------------------------------------
 
-        retrieved_chunks = retrieve_chunks(
-            question,
-            st.session_state.index,
-            st.session_state.chunks
-        )
+if st.session_state.summary:
 
-        context = "\n\n".join(retrieved_chunks)
+    st.divider()
 
-        answer = ask_question(
-            question,
-            context
-        )
+    st.subheader("📄 Executive Summary")
 
-        st.subheader("📚 Retrieved Chunks")
+    st.write(st.session_state.summary)
 
-        for i, chunk in enumerate(retrieved_chunks):
+# ----------------------------------------------------
+# CHAT
+# ----------------------------------------------------
 
-            with st.expander(f"Retrieved Chunk {i+1}"):
+if st.session_state.vector_store is not None:
 
-                st.write(chunk)
+    st.divider()
 
-        st.subheader("🤖 Answer")
+    st.subheader("💬 Ask Anything About This Video")
 
-        st.write(answer)
+    question = st.text_input(
+        "Your Question"
+    )
+
+    if st.button(
+        "Ask AI",
+        use_container_width=True
+    ):
+
+        if question.strip() == "":
+
+            st.warning(
+                "Please enter a question."
+            )
+
+        else:
+
+            with st.spinner(
+                "Searching Knowledge Base..."
+            ):
+
+                retrieved_chunks = retrieve_chunks(
+                    question,
+                    st.session_state.vector_store,
+                    st.session_state.chunks
+                )
+
+                context = "\n\n".join(
+                    retrieved_chunks
+                )
+
+            with st.spinner(
+                "Generating Answer..."
+            ):
+
+                answer = ask_question(
+                    question,
+                    context
+                )
+
+            st.subheader("🤖 AI Answer")
+
+            st.write(answer)
