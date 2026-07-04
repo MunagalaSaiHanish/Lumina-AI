@@ -17,6 +17,7 @@ from services.llm_service import (
     ask_question
 )
 from services.youtube_metadata import get_video_metadata
+from services.export_service import generate_pdf
 
 #page setup
 
@@ -199,6 +200,30 @@ if st.session_state.topics:
         with cols[i % 2]:
             st.info(topic)
 
+
+#download report
+
+if st.session_state.summary:
+
+    st.divider()
+
+    st.subheader("📄 Export Report")
+
+    pdf = generate_pdf(
+         st.session_state.metadata,
+         st.session_state.topics[0] if st.session_state.topics else "AI Knowledge Report",
+         st.session_state.summary,
+         st.session_state.takeaways,
+         st.session_state.topics
+)
+
+    st.download_button(
+        label="⬇ Download PDF Report",
+        data=pdf,
+        file_name="Lumina_AI_Report.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
 #transcript
 
 if st.session_state.transcript:

@@ -23,10 +23,11 @@ def get_video_metadata(video_url):
         data = response.json()
 
         return {
-            "title": data.get("title", ""),
-            "channel": data.get("author_name", ""),
-            "thumbnail": data.get("thumbnail_url", "")
-        }
+    "title": data.get("title", ""),
+    "channel": data.get("author_name", ""),
+    "thumbnail": data.get("thumbnail_url", ""),
+    "url": video_url
+}
 
     except Exception:
 
