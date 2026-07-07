@@ -3,9 +3,12 @@ import json
 
 from dotenv import load_dotenv
 from openai import OpenAI
+
 from services.prompt_builder import build_prompt
 
-#load environment variables
+# ---------------------------------------------------------
+# Load Environment Variables
+# ---------------------------------------------------------
 
 load_dotenv()
 
@@ -14,24 +17,37 @@ client = OpenAI(
     base_url="https://openrouter.ai/api/v1"
 )
 
-#generate detailed summary
+MODEL = "qwen/qwen3-32b"
 
-def summarize(transcript):
+# ---------------------------------------------------------
+# Generate Summary
+# ---------------------------------------------------------
+
+def summarize(text):
 
     prompt = f"""
-You are an AI assistant. 
-Summarize the following transcript into concise bullet points.
+You are an expert AI assistant.
 
-Include points and hifhlight the important points
+Generate a professional summary of the following content.
 
-Transcript:
+Requirements:
 
-{transcript}
+- Clear
+- Concise
+- Easy to understand
+- Preserve important concepts
+
+Content:
+
+{text}
 """
 
     response = client.chat.completions.create(
-        model="qwen/qwen3-32b",
+
+        model=MODEL,
+
         temperature=0.3,
+
         messages=[
             {
                 "role": "user",
@@ -43,14 +59,16 @@ Transcript:
     return response.choices[0].message.content
 
 
-#generate key takeaways and topics
+# ---------------------------------------------------------
+# Generate Key Takeaways & Topics
+# ---------------------------------------------------------
 
 def generate_insights(summary):
 
     prompt = f"""
 Read the following summary.
 
-Generate ONLY valid JSON.
+Return ONLY valid JSON.
 
 Format:
 
@@ -67,17 +85,10 @@ Format:
         "...",
         "...",
         "...",
+        "...",
         "..."
     ]
 }}
-
-Instructions:
-
-1. Generate 5 important key takeaways.
-
-2. Generate 4-7 main topics.
-
-Return ONLY valid JSON.
 
 Summary:
 
@@ -85,12 +96,15 @@ Summary:
 """
 
     response = client.chat.completions.create(
-        model="qwen/qwen3-32b",
+
+        model=MODEL,
+
         temperature=0.2,
+
         messages=[
             {
-                "role":"user",
-                "content":prompt
+                "role": "user",
+                "content": prompt
             }
         ]
     )
@@ -99,50 +113,69 @@ Summary:
 
     if content.startswith("```"):
 
-        content = content.replace("```json","")
-        content = content.replace("```","")
-        content = content.strip()
+        content = (
+            content
+            .replace("```json", "")
+            .replace("```", "")
+            .strip()
+        )
 
     try:
 
         return json.loads(content)
 
-    except json.JSONDecodeError:
+    except Exception:
 
         return {
 
-            "takeaways":[],
+            "takeaways": [],
 
-            "topics":[]
+            "topics": []
+
         }
 
 
-#ask question
+# ---------------------------------------------------------
+# Ask Question
+# ---------------------------------------------------------
 
 def ask_question(
+
     question,
+
     context,
+
     messages=None
+
 ):
 
     if messages is None:
+
         messages = []
 
     prompt = build_prompt(
+
         messages=messages,
+
         context=context,
+
         question=question
+
     )
 
     response = client.chat.completions.create(
-        model="qwen/qwen3-32b",
+
+        model=MODEL,
+
         temperature=0.2,
+
         messages=[
             {
                 "role": "user",
                 "content": prompt
             }
         ]
+
     )
 
     return response.choices[0].message.content

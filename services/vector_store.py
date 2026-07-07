@@ -4,22 +4,32 @@ import numpy as np
 from services.embedding_service import model
 
 
-#create faiss vector store
+# ---------------------------------------------------------
+# Create FAISS Vector Store
+# ---------------------------------------------------------
 
 def create_vector_store(embeddings):
 
-    embeddings = np.array(embeddings).astype("float32")
+    embeddings = np.array(
+        embeddings
+    ).astype("float32")
 
     dimension = embeddings.shape[1]
 
-    index = faiss.IndexFlatL2(dimension)
+    index = faiss.IndexFlatL2(
+        dimension
+    )
 
-    index.add(embeddings)
+    index.add(
+        embeddings
+    )
 
     return index
 
 
-# retrieve document chunks
+# ---------------------------------------------------------
+# Retrieve Documents
+# ---------------------------------------------------------
 
 def retrieve_documents(
     question,
@@ -27,6 +37,10 @@ def retrieve_documents(
     vector_records,
     top_k=3
 ):
+
+    if index is None:
+
+        return []
 
     question_embedding = model.encode(
         [question]
@@ -41,16 +55,19 @@ def retrieve_documents(
         top_k
     )
 
-    results = []
+    retrieved_documents = []
 
     for idx in indices[0]:
 
+        # FAISS may return -1 when nothing is found
         if idx == -1:
             continue
 
-        results.append(
+        if idx >= len(vector_records):
+            continue
+
+        retrieved_documents.append(
             vector_records[idx]
         )
 
-    return results
-
+    return retrieved_documents

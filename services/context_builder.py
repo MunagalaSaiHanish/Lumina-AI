@@ -1,64 +1,95 @@
-# build llm context from retrieved documents
-
+# ---------------------------------------------------------
+# Build Context for LLM
+# ---------------------------------------------------------
 
 def build_context(documents):
 
-    context = []
+    context_parts = []
 
     sources = []
 
     for document in documents:
 
-        context.append(
+        # -------------------------------
+        # Context sent to the LLM
+        # -------------------------------
+
+        context_parts.append(
             document["text"]
         )
 
-        metadata = document["metadata"]
+        # -------------------------------
+        # Build Source Information
+        # -------------------------------
 
-        source = ""
+        metadata = document.get(
+            "metadata",
+            {}
+        )
 
-        if metadata["source"] == "youtube":
+        source_type = metadata.get(
+            "source",
+            "unknown"
+        )
 
-            source = (
-                f"🎥 {metadata.get('title','Unknown')}"
-            )
+        # -------------------------------
+        # YouTube
+        # -------------------------------
 
-            if "timestamp" in metadata:
+        if source_type == "youtube":
 
-                source += (
-                    f" ({metadata['timestamp']})"
-                )
+            source = f"🎥 {metadata.get('title','YouTube')}"
 
-        elif metadata["source"] == "pdf":
+            if metadata.get("channel"):
 
-            source = (
-                f"📄 {metadata.get('file','PDF')}"
-            )
+                source += f" • {metadata['channel']}"
 
-            if "page" in metadata:
+        # -------------------------------
+        # PDF
+        # -------------------------------
 
-                source += (
-                    f" (Page {metadata['page']})"
-                )
+        elif source_type == "pdf":
 
-        elif metadata["source"] == "website":
+            source = f"📄 {metadata.get('file','PDF')}"
 
-            source = (
-                f"🌐 {metadata.get('url','Website')}"
-            )
+            if metadata.get("page"):
 
-        elif metadata["source"] == "text":
+                source += f" • Page {metadata['page']}"
+
+        # -------------------------------
+        # Website
+        # -------------------------------
+
+        elif source_type == "website":
+
+            source = f"🌐 {metadata.get('title','Website')}"
+
+        # -------------------------------
+        # Notes
+        # -------------------------------
+
+        elif source_type == "text":
 
             source = "📝 User Notes"
 
+        else:
+
+            source = "Unknown Source"
+
+        # Avoid duplicate sources
+
         if source not in sources:
 
-            sources.append(source)
+            sources.append(
+                source
+            )
 
     return {
 
-        "context":"\n\n".join(context),
+        "context": "\n\n".join(
+            context_parts
+        ),
 
-        "sources":sources
+        "sources": sources
 
     }

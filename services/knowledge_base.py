@@ -1,35 +1,76 @@
-# knowledge base builder
+import numpy as np
+
+from services.chunk_service import chunk_text
+from services.embedding_service import generate_embeddings
+from services.vector_store import (
+    create_vector_store,
+    retrieve_documents
+)
 
 
 class KnowledgeBase:
 
     def __init__(self):
+        self.vector_records = []
+        self.index = None
 
-        self.documents = []
-
-    # add document
 
     def add_document(
         self,
         text,
         metadata
     ):
+        chunks = chunk_text(text)
 
-        self.documents.append(
-            {
-                "text": text,
-                "metadata": metadata
-            }
+        embeddings = generate_embeddings(chunks)
+        embeddings = np.array(
+            embeddings
+        ).astype("float32")
+
+        new_records = []
+
+        for chunk in chunks:
+
+            new_records.append(
+                {
+                    "text": chunk,
+                    "metadata": metadata
+                }
+            )
+
+        self.vector_records.extend(
+            new_records
         )
 
-    # return all documents
+        if self.index is None:
 
-    def get_documents(self):
+            self.index = create_vector_store(
+                embeddings
+            )
+        else:
 
-        return self.documents
+            self.index.add(
+                embeddings
+            )
 
-    # clear knowledge base
+    def retrieve(
+        self,
+        question,
+        top_k=3
+    ):
 
+        if self.index is None:
+
+            return []
+
+        return retrieve_documents(
+            question=question,
+            index=self.index,
+            vector_records=self.vector_records,
+            top_k=top_k
+        )
     def clear(self):
 
-        self.documents = []
+        self.vector_records = []
+
+        self.index = None
