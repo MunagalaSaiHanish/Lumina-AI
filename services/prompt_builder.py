@@ -1,4 +1,4 @@
-# build prompt for conversational rag
+# Build prompt for the LLM
 
 
 def build_prompt(
@@ -7,34 +7,53 @@ def build_prompt(
     question
 ):
 
-    prompt = """
+    conversation = ""
+
+    for message in messages:
+
+        role = message["role"].capitalize()
+
+        conversation += (
+            f"{role}: {message['content']}\n"
+        )
+
+    prompt = f"""
+========================
+SYSTEM
+========================
+
 You are Lumina AI.
 
-Answer ONLY using the retrieved context.
+Answer ONLY using the provided context.
 
-If the answer is not found,
-reply that you couldn't find it in the knowledge base.
+If the answer is not present in the context,
+reply with:
 
+"I couldn't find this information in the uploaded knowledge."
+
+Always explain clearly.
+
+========================
+CONVERSATION
+========================
+
+{conversation}
+
+========================
+CONTEXT
+========================
+
+{context}
+
+========================
+QUESTION
+========================
+
+{question}
+
+========================
+ANSWER
+========================
 """
-
-    if messages:
-
-        prompt += "\nConversation History\n\n"
-
-        for message in messages:
-
-            role = message["role"].capitalize()
-
-            prompt += (
-                f"{role}: {message['content']}\n"
-            )
-
-    prompt += "\nRetrieved Context\n\n"
-
-    prompt += context
-
-    prompt += "\n\nCurrent Question\n\n"
-
-    prompt += question
 
     return prompt

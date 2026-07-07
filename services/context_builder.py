@@ -1,94 +1,63 @@
-# ---------------------------------------------------------
-# Build Context for LLM
-# ---------------------------------------------------------
+# Build structured context for the LLM
+
 
 def build_context(documents):
 
-    context_parts = []
+    context_sections = []
 
     sources = []
 
     for document in documents:
 
-        # -------------------------------
-        # Context sent to the LLM
-        # -------------------------------
+        metadata = document["metadata"]
 
-        context_parts.append(
-            document["text"]
-        )
+        source_type = metadata.get("source", "Unknown")
 
-        # -------------------------------
-        # Build Source Information
-        # -------------------------------
-
-        metadata = document.get(
-            "metadata",
-            {}
-        )
-
-        source_type = metadata.get(
-            "source",
-            "unknown"
-        )
-
-        # -------------------------------
-        # YouTube
-        # -------------------------------
+        title = ""
 
         if source_type == "youtube":
 
-            source = f"🎥 {metadata.get('title','YouTube')}"
-
-            if metadata.get("channel"):
-
-                source += f" • {metadata['channel']}"
-
-        # -------------------------------
-        # PDF
-        # -------------------------------
+            title = metadata.get(
+                "title",
+                "YouTube Video"
+            )
 
         elif source_type == "pdf":
 
-            source = f"📄 {metadata.get('file','PDF')}"
-
-            if metadata.get("page"):
-
-                source += f" • Page {metadata['page']}"
-
-        # -------------------------------
-        # Website
-        # -------------------------------
+            title = metadata.get(
+                "file",
+                "PDF Document"
+            )
 
         elif source_type == "website":
 
-            source = f"🌐 {metadata.get('title','Website')}"
-
-        # -------------------------------
-        # Notes
-        # -------------------------------
-
-        elif source_type == "text":
-
-            source = "📝 User Notes"
+            title = metadata.get(
+                "url",
+                "Website"
+            )
 
         else:
 
-            source = "Unknown Source"
+            title = "Document"
 
-        # Avoid duplicate sources
+        section = f"""
+========================
+SOURCE : {source_type.upper()}
+TITLE  : {title}
+========================
 
-        if source not in sources:
+{document["text"]}
+"""
 
-            sources.append(
-                source
-            )
+        context_sections.append(section)
+
+        if title not in sources:
+
+            sources.append(title)
 
     return {
 
-        "context": "\n\n".join(
-            context_parts
-        ),
+        "context": "\n\n".join(context_sections),
 
         "sources": sources
 
