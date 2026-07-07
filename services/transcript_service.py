@@ -14,7 +14,7 @@ def get_transcript(video_id):
 
         return transcript
 
-    except IpBlocked:
+    except Exception:
 
         return None
 

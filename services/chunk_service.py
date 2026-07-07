@@ -1,60 +1,81 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
+# ---------------------------------------------------------
+# Chunk Configuration
+# ---------------------------------------------------------
 
-#chunk plain text
+CHUNK_SIZE = 1000
+
+CHUNK_OVERLAP = 200
+
+SEPARATORS = [
+    "\n\n",
+    "\n",
+    ". ",
+    " ",
+    ""
+]
+
+
+def get_text_splitter():
+
+    return RecursiveCharacterTextSplitter(
+
+        chunk_size=CHUNK_SIZE,
+
+        chunk_overlap=CHUNK_OVERLAP,
+
+        separators=SEPARATORS
+
+    )
+
+
+# ---------------------------------------------------------
+# Chunk Plain Text
+# ---------------------------------------------------------
 
 def chunk_text(text):
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
-        separators=[
-            "\n\n",
-            "\n",
-            ". ",
-            " ",
-            ""
-        ]
-    )
+    if not text.strip():
 
-    chunks = text_splitter.split_text(text)
+        return []
 
-    return chunks
+    text_splitter = get_text_splitter()
+
+    return text_splitter.split_text(text)
 
 
-#chunk transcript while preserving timestamps
+# ---------------------------------------------------------
+# Chunk Transcript (Preserve Timestamps)
+# ---------------------------------------------------------
 
 def chunk_transcript(transcript_segments):
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
-        separators=[
-            "\n\n",
-            "\n",
-            ". ",
-            " ",
-            ""
-        ]
-    )
+    text_splitter = get_text_splitter()
 
     chunks = []
 
     current_text = ""
+
     current_start = None
+
     current_end = None
 
     for segment in transcript_segments:
 
         if current_start is None:
+
             current_start = segment["start"]
 
         current_text += segment["text"] + " "
+
         current_end = segment["end"]
 
-        if len(current_text) >= 1000:
+        if len(current_text) >= CHUNK_SIZE:
 
-            split_chunks = text_splitter.split_text(current_text)
+            split_chunks = text_splitter.split_text(
+                current_text
+            )
 
             for chunk in split_chunks:
 
@@ -67,12 +88,16 @@ def chunk_transcript(transcript_segments):
                 )
 
             current_text = ""
+
             current_start = None
+
             current_end = None
 
     if current_text:
 
-        split_chunks = text_splitter.split_text(current_text)
+        split_chunks = text_splitter.split_text(
+            current_text
+        )
 
         for chunk in split_chunks:
 
@@ -86,21 +111,14 @@ def chunk_transcript(transcript_segments):
 
     return chunks
 
-# chunk document objects while preserving metadata
+
+# ---------------------------------------------------------
+# Chunk Documents (Preserve Metadata)
+# ---------------------------------------------------------
 
 def chunk_documents(documents):
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=200,
-        separators=[
-            "\n\n",
-            "\n",
-            ". ",
-            " ",
-            ""
-        ]
-    )
+    text_splitter = get_text_splitter()
 
     chunks = []
 

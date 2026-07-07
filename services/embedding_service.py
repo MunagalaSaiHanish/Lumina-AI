@@ -1,22 +1,44 @@
 from sentence_transformers import SentenceTransformer
 
-# embedding model
+# ---------------------------------------------------------
+# Embedding Model
+# ---------------------------------------------------------
 
 model = SentenceTransformer(
     "all-MiniLM-L6-v2"
 )
 
 
-# generate embeddings from plain text chunks
+# ---------------------------------------------------------
+# Generate Embeddings
+# ---------------------------------------------------------
 
 def generate_embeddings(chunks):
 
-    return model.encode(chunks)
+    if not chunks:
+
+        return []
+
+    return model.encode(
+
+        chunks,
+
+        convert_to_numpy=True,
+
+        normalize_embeddings=True
+
+    )
 
 
-# generate embeddings from document chunks
+# ---------------------------------------------------------
+# Generate Document Embeddings
+# ---------------------------------------------------------
 
 def generate_document_embeddings(chunks):
+
+    if not chunks:
+
+        return []
 
     texts = []
 
@@ -26,7 +48,15 @@ def generate_document_embeddings(chunks):
             chunk["text"]
         )
 
-    embeddings = model.encode(texts)
+    embeddings = model.encode(
+
+        texts,
+
+        convert_to_numpy=True,
+
+        normalize_embeddings=True
+
+    )
 
     vector_records = []
 
@@ -38,9 +68,7 @@ def generate_document_embeddings(chunks):
         vector_records.append(
             {
                 "text": chunk["text"],
-
                 "embedding": embedding,
-
                 "metadata": chunk["metadata"]
             }
         )

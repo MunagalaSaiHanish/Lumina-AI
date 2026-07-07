@@ -5,26 +5,39 @@ from bs4 import BeautifulSoup
 
 def extract_website_text(url):
 
+    if not url.strip():
+
+        return ""
+
     headers = {
 
-        "User-Agent":
-        "Mozilla/5.0"
+        "User-Agent": (
+            "Mozilla/5.0 "
+            "(Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 "
+            "(KHTML, like Gecko) "
+            "Chrome/138.0 Safari/537.36"
+        )
 
     }
 
     try:
 
         response = requests.get(
+
             url,
+
             headers=headers,
+
             timeout=10
+
         )
 
         response.raise_for_status()
 
     except requests.RequestException:
 
-        return None
+        return ""
 
     soup = BeautifulSoup(
 
@@ -37,9 +50,21 @@ def extract_website_text(url):
     for tag in soup(
 
         [
+
             "script",
+
             "style",
-            "noscript"
+
+            "noscript",
+
+            "header",
+
+            "footer",
+
+            "nav",
+
+            "aside"
+
         ]
 
     ):
@@ -51,6 +76,12 @@ def extract_website_text(url):
         separator=" ",
 
         strip=True
+
+    )
+
+    text = " ".join(
+
+        text.split()
 
     )
 
