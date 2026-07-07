@@ -40,16 +40,27 @@ Rules:
 def summarize(text):
 
     prompt = f"""
-Generate a professional summary.
+You are Lumina AI.
 
-Requirements
+Create a comprehensive Executive Summary of the following content.
 
-- Clear
-- Concise
-- Preserve important ideas
-- Easy to understand
+Instructions:
 
-Content
+- Cover ALL major concepts.
+- Do NOT skip important sections.
+- Preserve the chronological flow whenever possible.
+- Explain technical concepts clearly.
+- Include important examples mentioned.
+- Mention definitions when introduced.
+- Keep important numbers, statistics and facts.
+- Organize the summary into meaningful headings.
+- Use bullet points where appropriate.
+- Write in professional documentation style.
+- The summary should be detailed rather than short.
+- If the content is long, the summary should also be long.
+- Never intentionally shorten the content.
+
+Content:
 
 {text}
 """

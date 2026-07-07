@@ -8,359 +8,966 @@ from services.transcript_service import (
 )
 
 from services.chunk_service import (
-    chunk_text,
     chunk_transcript
 )
 
-from services.embedding_service import generate_embeddings
-from services.vector_store import (
-    create_vector_store,
-    retrieve_documents
-)
 from services.llm_service import (
     summarize,
     generate_insights,
     ask_question
 )
-from services.youtube_metadata import get_video_metadata
-from services.export_service import generate_pdf
-from services.context_builder import build_context
-from services.pdf_service import extract_pdf_text
-from services.knowledge_base import KnowledgeBase
-from services.memory_service import MemoryService
-from services.website_service import (extract_website_text)
 
-#page setup
-
-st.set_page_config(
-    page_title="AI Knowledge Assistant",
-    page_icon=".assets/lumina logo.png",
-    layout="wide"
+from services.youtube_metadata import (
+    get_video_metadata
 )
 
-#session state
+from services.export_service import (
+    generate_pdf
+)
 
-if "transcript" not in st.session_state:
-    st.session_state.transcript = ""
+from services.context_builder import (
+    build_context
+)
 
-if "summary" not in st.session_state:
-    st.session_state.summary = ""
+from services.pdf_service import (
+    extract_pdf_text
+)
 
-if "takeaways" not in st.session_state:
-    st.session_state.takeaways = []
+from services.website_service import (
+    extract_website_text
+)
 
-if "topics" not in st.session_state:
-    st.session_state.topics = []
+from services.knowledge_base import (
+    KnowledgeBase
+)
 
-if "chunks" not in st.session_state:
-    st.session_state.chunks = []
-    
-
-if "knowledge_base" not in st.session_state:
-
-    st.session_state.knowledge_base = KnowledgeBase()   
-
+from services.memory_service import (
+    MemoryService
+)
 
 
-if "memory" not in st.session_state:
+# -------------------------------------------------------
+# Page Configuration
+# -------------------------------------------------------
 
-    st.session_state.memory = MemoryService()
+st.set_page_config(
 
-if "metadata" not in st.session_state:
-    st.session_state.metadata = None
+    page_title="Lumina AI",
 
-if "metadata_chunks" not in st.session_state:
-    st.session_state.metadata_chunks = []
+    page_icon="assets/lumina logo.png",
 
-#transcript popup
+    layout="wide"
 
-@st.dialog("📜 Full Transcript", width="large")
+)
+
+
+# -------------------------------------------------------
+# Session State
+# -------------------------------------------------------
+
+DEFAULT_STATE = {
+
+    "knowledge_base": KnowledgeBase(),
+
+    "memory": MemoryService(),
+
+    "metadata": None,
+
+    "summary": "",
+
+    "takeaways": [],
+
+    "topics": [],
+
+    "transcript": ""
+
+}
+
+for key, value in DEFAULT_STATE.items():
+
+    if key not in st.session_state:
+
+        st.session_state[key] = value
+
+
+# -------------------------------------------------------
+# Transcript Dialog
+# -------------------------------------------------------
+
+@st.dialog(
+    "📜 Transcript",
+    width="large"
+)
 def show_transcript():
 
     st.text_area(
+
         "",
+
         st.session_state.transcript,
+
         height=500
+
     )
 
-#side bar
+
+# -------------------------------------------------------
+# Sidebar
+# -------------------------------------------------------
 
 with st.sidebar:
 
-    st.title("🎥 AI Knowledge Assistant")
+    st.title("💡 Lumina AI")
 
     st.markdown("---")
 
-    st.subheader("About")
+    st.subheader("Knowledge Sources")
 
-    st.write("""
-This application uses Retrieval-Augmented Generation (RAG)
-to analyze YouTube videos.
+    st.write(
+        """
+Load one or more sources.
 
-Pipeline
+Supported:
 
-• Transcript
-• Chunking
-• Embeddings
-• FAISS
-• Qwen
-""")
+• 🎥 YouTube
 
-    st.markdown("---")
-    st.success("✅ RAG Enabled")
+• 📄 PDF
 
-#main app
+• 🌐 Website
 
-st.title("🎥 AI Knowledge Assistant")
-st.caption("Analyze YouTube videos using AI")
-st.divider()
-
-#input of youtube url
-
-video_url = st.text_input("🔗 Paste YouTube URL")
-
-uploaded_pdf = st.file_uploader(
-    "📄 Upload PDF",
-    type=["pdf"]
-)
-
-website_url = st.text_input(
-    "🌐 Paste Website URL"
-)
-
-if uploaded_pdf:
-
-    pdf_text = extract_pdf_text(
-        uploaded_pdf
+• 📝 Plain Text
+"""
     )
 
-    st.success("PDF Loaded Successfully")
+    st.markdown("---")
 
-    st.write(pdf_text[:500])
+    if st.session_state.knowledge_base.index is None:
 
-#extract transcript, summary and build vector database
-
-if st.button("🚀 Analyze", use_container_width=True):
-
-    video_id = extract_video_id(video_url)
-
-    if video_id is None:
-        st.error("Invalid YouTube URL")
+        st.info(
+            "No Knowledge Loaded"
+        )
 
     else:
 
-        st.session_state.metadata = get_video_metadata(video_url)
+        st.success(
+            "Knowledge Base Ready"
+        )
 
-        with st.spinner("Fetching Transcript..."):
-            raw_transcript = get_transcript(video_id)
 
-        if raw_transcript is None:
-            st.error("Couldn't fetch transcript.")
+# -------------------------------------------------------
+# Main UI
+# -------------------------------------------------------
+
+st.title("💡 Lumina AI")
+
+st.caption(
+    "Your AI Knowledge Assistant"
+)
+
+st.divider()
+
+
+# -------------------------------------------------------
+# Inputs
+# -------------------------------------------------------
+
+video_url = st.text_input(
+
+    "🎥 YouTube URL"
+
+)
+
+uploaded_pdf = st.file_uploader(
+
+    "📄 Upload PDF",
+
+    type=["pdf"]
+
+)
+
+website_url = st.text_input(
+
+    "🌐 Website URL"
+
+)
+
+notes_text = st.text_area(
+
+    "📝 Paste Notes",
+
+    height=180,
+
+    placeholder="Paste notes, documentation or articles..."
+
+)
+
+# -------------------------------------------------------
+# Analyze Knowledge
+# -------------------------------------------------------
+
+if st.button(
+
+    "🚀 Analyze Knowledge",
+
+    use_container_width=True
+
+):
+
+    kb = st.session_state.knowledge_base
+
+    kb.clear()
+
+    st.session_state.memory.clear()
+
+    st.session_state.metadata = None
+
+    st.session_state.summary = ""
+
+    st.session_state.takeaways = []
+
+    st.session_state.topics = []
+
+    st.session_state.transcript = ""
+
+    source_loaded = False
+
+    combined_text = ""
+
+    # ---------------------------------------------------
+    # YouTube
+    # ---------------------------------------------------
+
+    if video_url.strip():
+
+        video_id = extract_video_id(
+
+            video_url
+
+        )
+
+        if video_id is None:
+
+            st.error(
+
+                "Invalid YouTube URL."
+
+            )
 
         else:
 
-            plain_text = transcript_to_text(raw_transcript)
-            st.session_state.transcript = plain_text
-            timestamp_segments = transcript_with_timestamps(
-             raw_transcript
+            metadata = get_video_metadata(
+
+                video_url
+
             )
 
-            with st.spinner("Generating AI Summary..."):
-                summary = summarize(plain_text)
+            with st.spinner(
 
-            st.session_state.summary = summary
+                "Fetching transcript..."
 
-            #generate insights
+            ):
 
-            with st.spinner("Generating Key Takeaways..."):
-                insights = generate_insights(summary)
+                transcript = get_transcript(
 
-            st.session_state.takeaways = insights.get("takeaways", [])
-            st.session_state.topics = insights.get("topics", [])
+                    video_id
 
-            #build vector database
-
-            with st.spinner("Building Knowledge Base..."):
-                metadata_chunks = chunk_transcript(
-                timestamp_segments
                 )
 
-                chunks = [
-                chunk["text"]
-                for chunk in metadata_chunks
-                ]
+            if transcript is None:
 
-                embeddings = generate_embeddings(
-                chunks
+                st.error(
+
+                    "Unable to fetch transcript."
+
                 )
-                vector_store = create_vector_store(embeddings)
 
-            st.session_state.chunks = chunks
-            st.session_state.metadata_chunks = metadata_chunks
-            st.session_state.vector_store = vector_store
+            else:
 
-            st.success("✅ Video Analysis Complete!")
+                transcript_text = transcript_to_text(
 
-#video information
+                    transcript
+
+                )
+
+                st.session_state.transcript = (
+
+                    transcript_text
+
+                )
+
+                transcript_chunks = chunk_transcript(
+
+                    transcript_with_timestamps(
+
+                        transcript
+
+                    )
+
+                )
+
+                for chunk in transcript_chunks:
+
+                    chunk["metadata"] = metadata
+
+                kb.add_chunks(
+
+                    transcript_chunks
+
+                )
+
+                st.session_state.metadata = metadata
+
+                combined_text += transcript_text + "\n\n"
+
+                source_loaded = True
+
+    # ---------------------------------------------------
+    # PDF
+    # ---------------------------------------------------
+
+    if uploaded_pdf is not None:
+
+        with st.spinner(
+
+            "Reading PDF..."
+
+        ):
+
+            pdf_text = extract_pdf_text(
+
+                uploaded_pdf
+
+            )
+            st.subheader("Extracted PDF Text")
+            st.text_area(
+                "Debug",
+                pdf_text,
+                height=500
+            )
+
+        if pdf_text:
+
+            kb.add_document(
+
+                text=pdf_text,
+
+                metadata={
+
+                    "source": "pdf",
+
+                    "title": uploaded_pdf.name,
+
+                    "file": uploaded_pdf.name
+
+                }
+
+            )
+
+            combined_text += pdf_text + "\n\n"
+
+            source_loaded = True
+
+    # ---------------------------------------------------
+    # Website
+    # ---------------------------------------------------
+
+    if website_url.strip():
+
+        with st.spinner(
+
+            "Reading Website..."
+
+        ):
+
+            website_text = extract_website_text(
+
+                website_url
+
+            )
+
+        if website_text:
+
+            kb.add_document(
+
+                text=website_text,
+
+                metadata={
+
+                    "source": "website",
+
+                    "title": website_url,
+
+                    "url": website_url
+
+                }
+
+            )
+
+            combined_text += website_text + "\n\n"
+
+            source_loaded = True
+
+    # ---------------------------------------------------
+    # Plain Text
+    # ---------------------------------------------------
+
+    if notes_text.strip():
+
+        kb.add_document(
+
+            text=notes_text,
+
+            metadata={
+
+                "source": "notes",
+
+                "title": "Notes"
+
+            }
+
+        )
+
+        combined_text += notes_text + "\n\n"
+
+        source_loaded = True
+
+    # ---------------------------------------------------
+    # Nothing Loaded
+    # ---------------------------------------------------
+
+    if not source_loaded:
+
+        st.warning(
+
+            "Please provide at least one knowledge source."
+
+        )
+
+        st.stop()
+
+    # ---------------------------------------------------
+    # Generate Summary
+    # ---------------------------------------------------
+
+    with st.spinner(
+
+        "Generating  Summary..."
+
+    ):
+
+        summary = summarize(
+
+            combined_text
+
+        )
+
+    st.session_state.summary = summary
+
+    # ---------------------------------------------------
+    # Generate Insights
+    # ---------------------------------------------------
+
+    with st.spinner(
+
+        "Generating Insights..."
+
+    ):
+
+        insights = generate_insights(
+
+            summary
+
+        )
+
+    st.session_state.takeaways = insights.get(
+
+        "takeaways",
+
+        []
+
+    )
+
+    st.session_state.topics = insights.get(
+
+        "topics",
+
+        []
+
+    )
+
+    st.success(
+
+        "✅ Knowledge Base Ready"
+
+    )
+    # -------------------------------------------------------
+# Knowledge Information
+# -------------------------------------------------------
 
 if st.session_state.metadata:
+
+    metadata = st.session_state.metadata
 
     st.divider()
 
     col1, col2 = st.columns([1, 3])
 
     with col1:
-        st.image(
-            st.session_state.metadata["thumbnail"],
-            use_container_width=True
+
+        thumbnail = metadata.get(
+            "thumbnail",
+            ""
         )
 
-    with col2:
-        st.subheader(st.session_state.metadata["title"])
-        st.write(f"👤 {st.session_state.metadata['channel']}")
+        if thumbnail:
 
-#ai summary
+            st.image(
+                thumbnail,
+                use_container_width=True
+            )
+
+    with col2:
+
+        st.subheader(
+
+            metadata.get(
+
+                "title",
+
+                "Knowledge Source"
+
+            )
+
+        )
+
+        if metadata.get("channel"):
+
+            st.write(
+
+                f"👤 {metadata['channel']}"
+
+            )
+
+        if metadata.get("url"):
+
+            st.write(
+
+                metadata["url"]
+
+            )
+
+
+# -------------------------------------------------------
+# Executive Summary
+# -------------------------------------------------------
 
 if st.session_state.summary:
 
     st.divider()
-    st.subheader("📝 AI Summary")
-    st.write(st.session_state.summary)
 
-#key takeaways
+    st.subheader(
+
+        "📝Summary"
+
+    )
+
+    st.write(
+
+        st.session_state.summary
+
+    )
+
+
+# -------------------------------------------------------
+# Key Takeaways
+# -------------------------------------------------------
 
 if st.session_state.takeaways:
 
     st.divider()
-    st.subheader("💡 Key Takeaways")
+
+    st.subheader(
+
+        "💡 Key Takeaways"
+
+    )
 
     for takeaway in st.session_state.takeaways:
-        st.success(takeaway)
 
-#main topics
+        st.success(
+
+            takeaway
+
+        )
+
+
+# -------------------------------------------------------
+# Main Topics
+# -------------------------------------------------------
 
 if st.session_state.topics:
 
     st.divider()
-    st.subheader("🧠 Main Topics")
 
-    cols = st.columns(2)
+    st.subheader(
 
-    for i, topic in enumerate(st.session_state.topics):
-        with cols[i % 2]:
-            st.info(topic)
+        "🧠 Main Topics"
+
+    )
+
+    columns = st.columns(2)
+
+    for index, topic in enumerate(
+
+        st.session_state.topics
+
+    ):
+
+        with columns[index % 2]:
+
+            st.info(
+
+                topic
+
+            )
 
 
-#download report
+# -------------------------------------------------------
+# Export Report
+# -------------------------------------------------------
 
 if st.session_state.summary:
 
     st.divider()
 
-    st.subheader("📄 Export Report")
+    st.subheader(
+
+        "📄 Export Report"
+
+    )
+
+    report_title = (
+
+        st.session_state.topics[0]
+
+        if st.session_state.topics
+
+        else
+
+        "Lumina AI Report"
+
+    )
 
     pdf = generate_pdf(
-         st.session_state.metadata,
-         st.session_state.topics[0] if st.session_state.topics else "AI Knowledge Report",
-         st.session_state.summary,
-         st.session_state.takeaways,
-         st.session_state.topics
-)
+
+        metadata=st.session_state.metadata,
+
+        topic=report_title,
+
+        summary=st.session_state.summary,
+
+        takeaways=st.session_state.takeaways,
+
+        topics=st.session_state.topics
+
+    )
 
     st.download_button(
+
         label="⬇ Download PDF Report",
+
         data=pdf,
-        file_name="Lumina_AI_Report.pdf",
+
+        file_name=f"{topic}.pdf",
+
         mime="application/pdf",
+
         use_container_width=True
+
     )
-#transcript
+
+
+# -------------------------------------------------------
+# Transcript
+# -------------------------------------------------------
 
 if st.session_state.transcript:
 
     st.divider()
-    st.subheader("📜 Transcript")
 
-    st.write("The transcript is hidden to keep the interface clean.")
+    st.subheader(
 
-    if st.button("📜 View Full Transcript", use_container_width=True):
+        "📜 Transcript"
+
+    )
+
+    st.write(
+
+        "Transcript hidden for a cleaner interface."
+
+    )
+
+    if st.button(
+
+        "View Transcript",
+
+        use_container_width=True
+
+    ):
+
         show_transcript()
 
-#ask question
+# -------------------------------------------------------
+# Chat
+# -------------------------------------------------------
 
-#chat
-
-if st.session_state.vector_store is not None:
+if st.session_state.knowledge_base.index is not None:
 
     st.divider()
 
-    st.subheader("💬 Chat with Lumina AI")
+    st.subheader("💬 Ask Lumina")
 
-    #display previous messages
+    kb = st.session_state.knowledge_base
 
-    for message in st.session_state.memory.get_messages():
+    memory = st.session_state.memory
 
-        with st.chat_message(message["role"]):
+    # ---------------------------------------------------
+    # Previous Conversation
+    # ---------------------------------------------------
 
-            st.markdown(message["content"])
+    for message in memory.get_messages():
+
+        with st.chat_message(
+
+            message["role"]
+
+        ):
+
+            st.markdown(
+
+                message["content"]
+
+            )
+
+    # ---------------------------------------------------
+    # Chat Input
+    # ---------------------------------------------------
 
     question = st.chat_input(
-        "Ask anything about this video..."
+
+        "Ask anything about your knowledge..."
+
     )
 
     if question:
-        st.session_state.memory.add_message(
+
+        memory.add_message(
+
             "user",
-             question
-)
 
-        with st.chat_message("user"):
+            question
 
-            st.markdown(question)
+        )
 
-        with st.spinner(
-            "Searching Knowledge Base..."
+        with st.chat_message(
+
+            "user"
+
         ):
 
-            retrieved_chunks = retrieve_documents(
-                question,
-                st.session_state.vector_store,
-                st.session_state.metadata_chunks
+            st.markdown(
+
+                question
+
             )
 
-            context_data = build_context(retrieved_chunks)
+        # -----------------------------------------------
+        # Retrieve Knowledge
+        # -----------------------------------------------
 
         with st.spinner(
+
+            "Searching Knowledge Base..."
+
+        ):
+
+            retrieved_documents = kb.retrieve(
+
+                question=question,
+
+                top_k=5
+
+            )
+
+            context_data = build_context(
+
+                retrieved_documents
+
+            )
+
+        # -----------------------------------------------
+        # Ask LLM
+        # -----------------------------------------------
+
+        with st.spinner(
+
             "Thinking..."
+
         ):
 
             answer = ask_question(
-    question=question,
-    context=context_data["context"],
-    messages=st.session_state.memory.get_recent_messages()
-)
 
-        st.session_state.memory.add_message(
-    "assistant",
-    answer
-)
+                question=question,
 
-        with st.chat_message("assistant"):
+                context=context_data["context"],
 
-            st.markdown(answer)
+                messages=memory.get_recent_messages()
 
-        st.caption("📚 Sources")
+            )
 
-        for source in context_data["sources"]:
-            st.write(source)
+        memory.add_message(
 
-        st.caption("📍 Mentioned in video")
+            "assistant",
 
-        for chunk in retrieved_chunks:
-            start = int(chunk["start"])
-            minutes = start // 60
-            seconds = start % 60
-            st.write(f"• {minutes:02}:{seconds:02}")
-            
+            answer
 
-            
+        )
+
+        with st.chat_message(
+
+            "assistant"
+
+        ):
+
+            st.markdown(
+
+                answer
+
+            )
+
+        # -----------------------------------------------
+        # Sources
+        # -----------------------------------------------
+
+        if context_data["sources"]:
+
+            st.caption(
+
+                "📚 Sources"
+
+            )
+
+            for source in context_data["sources"]:
+
+                st.write(
+
+                    f"• {source}"
+
+                )
+
+        # -----------------------------------------------
+        # Video Timestamps
+        # -----------------------------------------------
+
+        youtube_chunks = []
+
+        for document in retrieved_documents:
+
+            if "start" in document:
+
+                youtube_chunks.append(
+
+                    document
+
+                )
+
+        if youtube_chunks:
+
+            st.caption(
+
+                "📍 Mentioned In Video"
+
+            )
+
+            displayed = set()
+
+            for chunk in youtube_chunks:
+
+                timestamp = int(
+
+                    chunk["start"]
+
+                )
+
+                if timestamp in displayed:
+
+                    continue
+
+                displayed.add(
+
+                    timestamp
+
+                )
+
+                minutes = timestamp // 60
+
+                seconds = timestamp % 60
+
+                st.write(
+
+                    f"• {minutes:02}:{seconds:02}"
+
+                )
+
+
+# -------------------------------------------------------
+# Clear Workspace
+# -------------------------------------------------------
+
+st.divider()
+
+col1, col2 = st.columns(2)
+
+with col1:
+
+    if st.button(
+
+        "🗑 Clear Workspace",
+
+        use_container_width=True
+
+    ):
+
+        st.session_state.knowledge_base.clear()
+
+        st.session_state.memory.clear()
+
+        st.session_state.summary = ""
+
+        st.session_state.takeaways = []
+
+        st.session_state.topics = []
+
+        st.session_state.transcript = ""
+
+        st.session_state.metadata = None
+
+        st.rerun()
+
+with col2:
+
+    if st.session_state.knowledge_base.index is None:
+
+        st.info(
+
+            "No Knowledge Loaded"
+
+        )
+
+    else:
+
+        st.success(
+
+            "Knowledge Base Ready"
+
+        )
