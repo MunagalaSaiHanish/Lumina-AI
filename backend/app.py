@@ -25,7 +25,7 @@ app.include_router(router)
 @app.get("/")
 def root():
     return {
-        "message": "Welcome to Lumixa API"
+        "message": "Welcome to Lumixa "
     }
 
 
