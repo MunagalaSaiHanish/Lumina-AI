@@ -44,6 +44,7 @@ Rules:
 def stream_llm_response(messages, temperature=0.3):
     """
     Unified reusable streaming utility for all LLM generations in Lumixa AI.
+    Filters out <think>…</think> reasoning blocks that Qwen3 emits.
     """
     try:
         response = client.chat.completions.create(
@@ -52,9 +53,61 @@ def stream_llm_response(messages, temperature=0.3):
             messages=messages,
             stream=True
         )
+
+        # Qwen3 wraps internal reasoning in <think>…</think> tags.
+        # We buffer text to detect and strip these blocks so only the
+        # real answer reaches st.write_stream.
+        inside_think = False
+        buffer = ""
+
         for chunk in response:
-            if chunk.choices and chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+            if not chunk.choices or not chunk.choices[0].delta.content:
+                continue
+
+            token = chunk.choices[0].delta.content
+            buffer += token
+
+            # Process buffer for think tags
+            while buffer:
+                if inside_think:
+                    # Look for the closing tag
+                    end_idx = buffer.find("</think>")
+                    if end_idx != -1:
+                        # Discard everything up to and including </think>
+                        buffer = buffer[end_idx + len("</think>"):]
+                        inside_think = False
+                    else:
+                        # Still inside think block; discard and wait
+                        # Keep last 8 chars in case </think> spans chunks
+                        if len(buffer) > 8:
+                            buffer = buffer[-8:]
+                        break
+                else:
+                    # Look for the opening tag
+                    start_idx = buffer.find("<think>")
+                    if start_idx != -1:
+                        # Yield everything before the <think> tag
+                        before = buffer[:start_idx]
+                        if before:
+                            yield before
+                        buffer = buffer[start_idx + len("<think>"):]
+                        inside_think = True
+                    elif "<" in buffer:
+                        # Possible partial tag; yield up to the '<' and keep the rest
+                        safe_idx = buffer.rfind("<")
+                        if safe_idx > 0:
+                            yield buffer[:safe_idx]
+                            buffer = buffer[safe_idx:]
+                        break
+                    else:
+                        # No tags, yield everything
+                        yield buffer
+                        buffer = ""
+
+        # Flush remaining buffer
+        if buffer and not inside_think:
+            yield buffer
+
     except Exception as e:
         yield f"Sorry, I encountered an error during generation: {e}"
 

@@ -399,53 +399,67 @@ div[data-testid="stChatMessage"]:has(.whatsapp-user-message) [data-testid="stCha
     margin: 0 !important;
 }
 
-/* ---------- shrink the sticky bottom chat bar ----------
-   Streamlit reserves a fairly tall fixed strip at the bottom of the
-   viewport for st.chat_input by default. We compress every layer of
-   it — the outer fixed wrapper, the inner block container, the
-   textarea itself, and the send button — so it reads as a slim input
-   bar instead of a big footer eating into the page. */
-[data-testid="stBottom"] {
-    padding-top: 0.25rem !important;
+/* ================= CHAT INPUT ================= */
+
+[data-testid="stBottom"]{
+    padding:0.4rem 1rem !important;
+    background:var(--ink);
 }
-[data-testid="stBottomBlockContainer"] {
-    padding: 0.35rem 1.5rem !important;
+
+[data-testid="stBottomBlockContainer"]{
+    padding:0 !important;
+    max-width:100% !important;
 }
-[data-testid="stChatInput"] {
-    min-height: 0 !important;
+
+[data-testid="stChatInput"]{
+    width:100% !important;
+    max-width:100% !important;
+    box-sizing:border-box !important;
 }
-[data-testid="stChatInput"] textarea,
-[data-testid="stChatInputTextArea"] {
-    min-height: 2.1rem !important;
-    max-height: 2.1rem !important;
-    padding: 0.45rem 0.75rem !important;
-    font-size: 0.85rem !important;
-    line-height: 1.2 !important;
+
+/* Streamlit 1.59.2 nests the layout container one level deeper:
+   stChatInput > div (wrapper, 1 child) > div (actual flex row).
+   Target the grandchild to switch from column to row. */
+[data-testid="stChatInput"] > div > div {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    gap: 8px !important;
 }
-[data-testid="stChatInputSubmitButton"] {
-    height: 1.9rem !important;
-    width: 1.9rem !important;
-    min-height: 1.9rem !important;
-    align-self: center !important;
+
+/* Textarea wrapper: grow to fill available width */
+[data-testid="stChatInput"] > div > div > div:first-child {
+    width: auto !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
 }
+
+/* Button wrapper: shrink to fit */
+[data-testid="stChatInput"] > div > div > div:last-child {
+    width: auto !important;
+    flex: 0 0 auto !important;
+}
+
+[data-testid="stChatInput"] textarea{
+    min-height:42px !important;
+    max-height:42px !important;
+    resize:none !important;
+    overflow:hidden !important;
+}
+
+[data-testid="stChatInputSubmitButton"]{
+    margin:0 !important;
+    flex-shrink:0 !important;
+}
+
 
 /* ---------- misc ---------- */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--ink-line); border-radius: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* Hard safety net: guarantee the chat input (now Streamlit's own
-   sticky-bottom bar, not a floated container) can never push the page
-   into horizontal scroll. */
+/* Prevent horizontal page scroll */
 html, body { overflow-x: hidden !important; }
-
-[data-testid="stChatInput"],
-[data-testid="stChatInput"] > div,
-[data-testid="stChatInput"] textarea {
-    width: 100% !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-}
 
 /* ===================== RESPONSIVE: TABLET (<=1024px) ===================== */
 /* Below this width the two panels stack instead of sitting
@@ -529,7 +543,7 @@ def clear_workspace():
 # Sidebar — the lamp
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.image("assets/logo.png", use_container_width=True)
+    st.image("assets/logo.png", width="stretch")
     st.divider()
 
     st.markdown('<div class="eyebrow">Session</div>', unsafe_allow_html=True)
@@ -559,7 +573,7 @@ center_panel, source_panel = st.columns([8, 2.5])
 # Right panel — sources (the intake tray)
 # ---------------------------------------------------------------------------
 with source_panel:
-    with st.container(height=570, border=True):
+    with st.container(height=566, border=True):
         st.subheader("Knowledge sources")
 
         video_url = st.text_input("Video URL", placeholder="https://www.youtube.com/watch?v=...")
@@ -589,7 +603,7 @@ with source_panel:
 # Center panel — the reading pane
 # ---------------------------------------------------------------------------
 with center_panel:
-    workspace_container = st.container(height=570, border=True)
+    workspace_container = st.container(height=566, border=True)
     with workspace_container:
 
         if not st.session_state.summary and not st.session_state.metadata and not analyze_clicked:
@@ -715,7 +729,7 @@ with center_panel:
                 with col1:
                     thumbnail = metadata.get("thumbnail", "")
                     if thumbnail:
-                        st.image(thumbnail, use_container_width=True)
+                        st.image(thumbnail, width="stretch")
                 with col2:
                     st.markdown(f"### {metadata.get('title', 'Knowledge Source')}")
                     if metadata.get("channel"):
@@ -788,7 +802,61 @@ with center_panel:
                         st.markdown('<div class="whatsapp-user-message"></div>', unsafe_allow_html=True)
                     st.write(message["content"])
 
-        active_chat_placeholder = st.container()
+            # Handle active question and stream inside the workspace container
+            if "active_question" in st.session_state:
+                active_q = st.session_state.active_question
+                with st.chat_message("user"):
+                    st.markdown('<div class="whatsapp-user-message"></div>', unsafe_allow_html=True)
+                    st.write(active_q)
+
+                try:
+                    kb = st.session_state.knowledge_base
+                    memory = st.session_state.memory
+
+                    with st.status("Searching Vector Database...", expanded=True) as status:
+                        retrieved_documents = kb.retrieve(question=active_q, top_k=5)
+                        context_data = build_context(retrieved_documents)
+                        status.update(label="Generating Response...", state="complete")
+
+                    with st.chat_message("assistant"):
+                        answer = st.write_stream(
+                            ask_question_stream(
+                                question=active_q,
+                                context=context_data["context"],
+                                messages=memory.get_recent_messages()
+                            )
+                        )
+
+                        citation_block = ""
+                        if context_data["sources"]:
+                            citation_block += "\n\n**Sources:**\n"
+                            for source in context_data["sources"]:
+                                citation_block += f"— {source}\n"
+
+                        youtube_chunks = [doc for doc in retrieved_documents if "start" in doc]
+                        if youtube_chunks:
+                            citation_block += "\n\n**Mentioned in video:**\n"
+                            displayed = set()
+                            for chunk in youtube_chunks:
+                                timestamp = int(chunk["start"])
+                                if timestamp in displayed:
+                                    continue
+                                displayed.add(timestamp)
+                                minutes, seconds = timestamp // 60, timestamp % 60
+                                citation_block += f"— {minutes:02}:{seconds:02}\n"
+
+                        if citation_block:
+                            st.markdown(citation_block)
+
+                    # Atomically add user message and generated response to memory
+                    memory.add_message("user", active_q)
+                    memory.add_message("assistant", answer + citation_block)
+
+                except Exception as e:
+                    st.error(f"Couldn't answer that: {e}")
+
+                del st.session_state.active_question
+                st.rerun()
 
 # ---------------------------------------------------------------------------
 # Chat input — Streamlit's native chat input, anchored to the bottom of
@@ -801,58 +869,5 @@ if question:
     if st.session_state.knowledge_base.index is None:
         st.error("Add and analyze a source before asking a question.")
     else:
-        kb = st.session_state.knowledge_base
-        memory = st.session_state.memory
-        memory.add_message("user", question)
-
-        with active_chat_placeholder:
-            with st.chat_message("user"):
-                st.markdown('<div class="whatsapp-user-message"></div>', unsafe_allow_html=True)
-                st.write(question)
-
-            try:
-                # Use st.status to show reasoning steps/database search progress natively
-                with st.status("Searching Vector Database...", expanded=True) as status:
-                    retrieved_documents = kb.retrieve(question=question, top_k=5)
-                    context_data = build_context(retrieved_documents)
-                    status.update(label="Generating Response...", state="complete")
-
-                with st.chat_message("assistant"):
-                    # Stream the response chunk-by-chunk in real-time
-                    answer = st.write_stream(
-                        ask_question_stream(
-                            question=question,
-                            context=context_data["context"],
-                            messages=memory.get_recent_messages()
-                        )
-                    )
-
-                    # Build citation markup to append to the stored memory content
-                    citation_block = ""
-                    if context_data["sources"]:
-                        citation_block += "\n\n**Sources:**\n"
-                        for source in context_data["sources"]:
-                            citation_block += f"— {source}\n"
-
-                    youtube_chunks = [doc for doc in retrieved_documents if "start" in doc]
-                    if youtube_chunks:
-                        citation_block += "\n\n**Mentioned in video:**\n"
-                        displayed = set()
-                        for chunk in youtube_chunks:
-                            timestamp = int(chunk["start"])
-                            if timestamp in displayed:
-                                continue
-                            displayed.add(timestamp)
-                            minutes, seconds = timestamp // 60, timestamp % 60
-                            citation_block += f"— {minutes:02}:{seconds:02}\n"
-
-                    if citation_block:
-                        st.markdown(citation_block)
-
-                # Store the complete matched message (response + citations) in memory
-                memory.add_message("assistant", answer + citation_block)
-
-            except Exception as e:
-                st.error(f"Couldn't answer that: {e}")
-
+        st.session_state.active_question = question
         st.rerun()
