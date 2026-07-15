@@ -16,8 +16,10 @@ from services.chunk_service import (
 
 from services.llm_service import (
     summarize,
+    summarize_stream,
     generate_insights,
-    ask_question
+    ask_question,
+    ask_question_stream
 )
 
 from services.youtube_metadata import (
@@ -52,7 +54,7 @@ from services.memory_service import (
 # Page config
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Lumina AI",
+    page_title="Lumixa AI",
     page_icon="◐",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -61,7 +63,7 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 # DESIGN CONCEPT — "the desk lamp"
 #
-# Lumina turns raw material (video, PDF, page, notes) into something you
+# Lumixa turns raw material (video, PDF, page, notes) into something you
 # can actually read by. The visual idea: a scholar's desk at night — deep
 # ink-navy surfaces, a warm brass lamp-glow behind the wordmark, and every
 # finding treated like an annotated excerpt (a fine hairline rule, a small
@@ -164,14 +166,37 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
 
 [data-testid="stVerticalBlock"] { gap: 0.6rem; }
 
-h1, h2, h3 {
+h1 {
     font-family: 'Fraunces', serif !important;
     font-weight: 600 !important;
+    font-size: 1.65rem !important;
     color: var(--parchment) !important;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
+    margin-bottom: 0.5rem !important;
 }
 
-p, span, label, div { color: var(--parchment); }
+h2 {
+    font-family: 'Fraunces', serif !important;
+    font-weight: 600 !important;
+    font-size: 1.40rem !important;
+    color: var(--parchment) !important;
+    letter-spacing: -0.010em;
+    margin-bottom: 0.4rem !important;
+}
+
+h3 {
+    font-family: 'Fraunces', serif !important;
+    font-weight: 600 !important;
+    font-size: 1.15rem !important;
+    color: var(--parchment) !important;
+    letter-spacing: -0.005em;
+    margin-bottom: 0.3rem !important;
+}
+
+p, li, label, [data-testid="stMarkdownContainer"] p {
+    font-size: 0.90rem !important;
+    color: var(--parchment) !important;
+}
 
 a { color: var(--brass) !important; }
 
@@ -350,6 +375,30 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
     border: 1px solid var(--ink-line) !important;
 }
 
+/* WhatsApp User Message Style Alignment */
+div[data-testid="stChatMessage"]:has(.whatsapp-user-message) {
+    flex-direction: row-reverse !important;
+    background-color: var(--brass-soft) !important; /* Soft brass like Takeaways */
+    border: 1px solid rgba(216, 165, 74, 0.3) !important;
+    border-radius: 12px 12px 0px 12px !important;
+    margin-left: auto !important;
+    margin-right: 0.5rem !important;
+    max-width: 80% !important;
+    width: fit-content !important;
+    padding: 8px 12px !important;
+}
+
+/* Hide user avatar in WhatsApp style */
+div[data-testid="stChatMessage"]:has(.whatsapp-user-message) [data-testid="stChatMessageAvatar"] {
+    display: none !important;
+}
+
+/* Clean up padding for the content container */
+div[data-testid="stChatMessage"]:has(.whatsapp-user-message) [data-testid="stChatMessageContent"] {
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
 /* ---------- shrink the sticky bottom chat bar ----------
    Streamlit reserves a fairly tall fixed strip at the bottom of the
    viewport for st.chat_input by default. We compress every layer of
@@ -480,13 +529,7 @@ def clear_workspace():
 # Sidebar — the lamp
 # ---------------------------------------------------------------------------
 with st.sidebar:
-    st.markdown("""
-        <div class="brand">
-            <div class="brand-glow"></div>
-            <div class="brand-mark">Lumina<span class="brand-ai">AI</span></div>
-            <div class="brand-tagline">Illuminate what you read</div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.image("assets/lumixa logo.png", use_container_width=True)
     st.divider()
 
     st.markdown('<div class="eyebrow">Session</div>', unsafe_allow_html=True)
@@ -517,7 +560,7 @@ center_panel, source_panel = st.columns([8, 2.5])
 # ---------------------------------------------------------------------------
 with source_panel:
     with st.container(height=570, border=True):
-        st.markdown("Knowledge sources")
+        st.subheader("Knowledge sources")
 
         video_url = st.text_input("Video URL", placeholder="https://www.youtube.com/watch?v=...")
         uploaded_pdf = st.file_uploader("PDF", type=["pdf"])
@@ -569,82 +612,86 @@ with center_panel:
             source_loaded = False
             combined_text = ""
 
-            # YouTube
-            if video_url.strip():
-                video_id = extract_video_id(video_url)
-                if video_id is None:
-                    st.error("That doesn't look like a valid YouTube URL.")
-                else:
-                    try:
-                        metadata = get_video_metadata(video_url)
-                        with st.spinner("Fetching transcript..."):
+            # Use st.status to show step-by-step progress natively
+            with st.status("Analyzing Knowledge...", expanded=True) as status:
+                # YouTube
+                if video_url.strip():
+                    video_id = extract_video_id(video_url)
+                    if video_id is None:
+                        st.error("That doesn't look like a valid YouTube URL.")
+                    else:
+                        try:
+                            metadata = get_video_metadata(video_url)
                             transcript = get_transcript(video_id)
-                        if transcript is None:
-                            st.error("This video has no transcript available.")
-                        else:
-                            transcript_text = transcript_to_text(transcript)
-                            st.session_state.transcript = transcript_text
-                            transcript_chunks = chunk_transcript(transcript_with_timestamps(transcript))
-                            for chunk in transcript_chunks:
-                                chunk["metadata"] = metadata
-                            kb.add_chunks(transcript_chunks)
-                            st.session_state.metadata = metadata
-                            combined_text += transcript_text + "\n\n"
-                            source_loaded = True
-                    except Exception as e:
-                        st.error(f"Couldn't reach that video: {e}")
+                            if transcript is None:
+                                st.error("This video has no transcript available.")
+                            else:
+                                transcript_text = transcript_to_text(transcript)
+                                st.session_state.transcript = transcript_text
+                                transcript_chunks = chunk_transcript(transcript_with_timestamps(transcript))
+                                for chunk in transcript_chunks:
+                                    chunk["metadata"] = metadata
+                                kb.add_chunks(transcript_chunks)
+                                st.session_state.metadata = metadata
+                                combined_text += transcript_text + "\n\n"
+                                source_loaded = True
+                        except Exception as e:
+                            st.error(f"Couldn't reach that video: {e}")
 
-            # PDF
-            if uploaded_pdf is not None:
-                try:
-                    with st.spinner("Reading PDF..."):
+                # PDF
+                if uploaded_pdf is not None:
+                    try:
                         pdf_text = extract_pdf_text(uploaded_pdf)
-                    if pdf_text:
-                        kb.add_document(
-                            text=pdf_text,
-                            metadata={"source": "pdf", "title": uploaded_pdf.name, "file": uploaded_pdf.name}
-                        )
-                        combined_text += pdf_text + "\n\n"
-                        source_loaded = True
-                    else:
-                        st.warning(f"No readable text found in {uploaded_pdf.name}.")
-                except Exception as e:
-                    st.error(f"Couldn't read that PDF: {e}")
+                        if pdf_text:
+                            kb.add_document(
+                                text=pdf_text,
+                                metadata={"source": "pdf", "title": uploaded_pdf.name, "file": uploaded_pdf.name}
+                            )
+                            combined_text += pdf_text + "\n\n"
+                            source_loaded = True
+                        else:
+                            st.warning(f"No readable text found in {uploaded_pdf.name}.")
+                    except Exception as e:
+                        st.error(f"Couldn't read that PDF: {e}")
 
-            # Website
-            if website_url.strip():
-                try:
-                    with st.spinner("Reading website..."):
+                # Website
+                if website_url.strip():
+                    try:
                         website_text = extract_website_text(website_url)
-                    if website_text:
-                        kb.add_document(
-                            text=website_text,
-                            metadata={"source": "website", "title": website_url, "url": website_url}
-                        )
-                        combined_text += website_text + "\n\n"
-                        source_loaded = True
-                    else:
-                        st.warning("No readable text found at that URL.")
-                except Exception as e:
-                    st.error(f"Couldn't reach that page: {e}")
+                        if website_text:
+                            kb.add_document(
+                                text=website_text,
+                                metadata={"source": "website", "title": website_url, "url": website_url}
+                            )
+                            combined_text += website_text + "\n\n"
+                            source_loaded = True
+                        else:
+                            st.warning("No readable text found at that URL.")
+                    except Exception as e:
+                        st.error(f"Couldn't reach that page: {e}")
 
-            # Notes
-            if notes_text.strip():
-                kb.add_document(text=notes_text, metadata={"source": "notes", "title": "Notes"})
-                combined_text += notes_text + "\n\n"
-                source_loaded = True
+                # Notes
+                if notes_text.strip():
+                    kb.add_document(text=notes_text, metadata={"source": "notes", "title": "Notes"})
+                    combined_text += notes_text + "\n\n"
+                    source_loaded = True
 
-            if not source_loaded:
-                st.warning("Add at least one source before analyzing.")
-                st.stop()
+                if not source_loaded:
+                    st.warning("Add at least one source before analyzing.")
+                    status.update(label="Analysis failed.", state="error")
+                    st.stop()
 
+                status.update(label="Analyzing Knowledge Complete.", state="complete")
+
+            # Stream Executive Summary directly to the workspace container
             try:
-                with st.spinner("Writing summary..."):
-                    st.session_state.summary = summarize(combined_text)
+                st.markdown('<div class="eyebrow">Generating Summary...</div>', unsafe_allow_html=True)
+                st.session_state.summary = st.write_stream(summarize_stream(combined_text))
             except Exception as e:
                 st.error(f"Couldn't generate a summary: {e}")
                 st.stop()
 
+            # Generate insights
             try:
                 with st.spinner("Finding takeaways..."):
                     insights = generate_insights(st.session_state.summary)
@@ -702,7 +749,7 @@ with center_panel:
         if st.session_state.summary:
             with st.container(border=True):
                 st.markdown('<div class="eyebrow">Export</div>', unsafe_allow_html=True)
-                report_title = st.session_state.topics[0] if st.session_state.topics else "Lumina AI Report"
+                report_title = st.session_state.topics[0] if st.session_state.topics else "Lumixa AI Report"
                 try:
                     pdf = generate_pdf(
                         metadata=st.session_state.metadata,
@@ -737,6 +784,8 @@ with center_panel:
         if st.session_state.knowledge_base.index is not None:
             for message in st.session_state.memory.get_messages():
                 with st.chat_message(message["role"]):
+                    if message["role"] == "user":
+                        st.markdown('<div class="whatsapp-user-message"></div>', unsafe_allow_html=True)
                     st.write(message["content"])
 
         active_chat_placeholder = st.container()
@@ -758,40 +807,50 @@ if question:
 
         with active_chat_placeholder:
             with st.chat_message("user"):
+                st.markdown('<div class="whatsapp-user-message"></div>', unsafe_allow_html=True)
                 st.write(question)
 
             try:
-                with st.spinner("Searching knowledge base..."):
+                # Use st.status to show reasoning steps/database search progress natively
+                with st.status("Searching Vector Database...", expanded=True) as status:
                     retrieved_documents = kb.retrieve(question=question, top_k=5)
                     context_data = build_context(retrieved_documents)
-
-                with st.spinner("Thinking..."):
-                    answer = ask_question(
-                        question=question,
-                        context=context_data["context"],
-                        messages=memory.get_recent_messages()
-                    )
-                memory.add_message("assistant", answer)
+                    status.update(label="Generating Response...", state="complete")
 
                 with st.chat_message("assistant"):
-                    st.write(answer)
+                    # Stream the response chunk-by-chunk in real-time
+                    answer = st.write_stream(
+                        ask_question_stream(
+                            question=question,
+                            context=context_data["context"],
+                            messages=memory.get_recent_messages()
+                        )
+                    )
 
-                if context_data["sources"]:
-                    st.markdown('<div class="eyebrow">Sources</div>', unsafe_allow_html=True)
-                    for source in context_data["sources"]:
-                        st.write(f"— {source}")
+                    # Build citation markup to append to the stored memory content
+                    citation_block = ""
+                    if context_data["sources"]:
+                        citation_block += "\n\n**Sources:**\n"
+                        for source in context_data["sources"]:
+                            citation_block += f"— {source}\n"
 
-                youtube_chunks = [doc for doc in retrieved_documents if "start" in doc]
-                if youtube_chunks:
-                    st.markdown('<div class="eyebrow">Mentioned in video</div>', unsafe_allow_html=True)
-                    displayed = set()
-                    for chunk in youtube_chunks:
-                        timestamp = int(chunk["start"])
-                        if timestamp in displayed:
-                            continue
-                        displayed.add(timestamp)
-                        minutes, seconds = timestamp // 60, timestamp % 60
-                        st.write(f"— {minutes:02}:{seconds:02}")
+                    youtube_chunks = [doc for doc in retrieved_documents if "start" in doc]
+                    if youtube_chunks:
+                        citation_block += "\n\n**Mentioned in video:**\n"
+                        displayed = set()
+                        for chunk in youtube_chunks:
+                            timestamp = int(chunk["start"])
+                            if timestamp in displayed:
+                                continue
+                            displayed.add(timestamp)
+                            minutes, seconds = timestamp // 60, timestamp % 60
+                            citation_block += f"— {minutes:02}:{seconds:02}\n"
+
+                    if citation_block:
+                        st.markdown(citation_block)
+
+                # Store the complete matched message (response + citations) in memory
+                memory.add_message("assistant", answer + citation_block)
 
             except Exception as e:
                 st.error(f"Couldn't answer that: {e}")

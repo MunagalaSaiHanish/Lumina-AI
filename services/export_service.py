@@ -16,7 +16,7 @@ from reportlab.platypus import (
     HRFlowable
 )
 
-LOGO_PATH = "assets/pdf lumina logo.png"
+LOGO_PATH = "assets/pdf lumixa.png"
 
 
 def clean_markdown(text: str):
@@ -75,27 +75,27 @@ def draw_footer(canvas, doc):
 
             canvas.drawImage(
                 LOGO_PATH,
-                90,
-                y - 8,
-                width=90,
-                height=24,
+                88,
+                y - 13,
+                width=100,
+                height=40,
                 mask="auto"
             )
 
         except Exception:
 
             canvas.drawString(
-                90,
+                88,
                 y,
-                "Lumina AI"
+                "Lumixa AI"
             )
 
     else:
 
         canvas.drawString(
-            90,
+            88,
             y,
-            "Lumina AI"
+            "Lumixa AI"
         )
 
     canvas.drawRightString(

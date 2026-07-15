@@ -24,7 +24,7 @@ MODEL = os.getenv(
 )
 
 SYSTEM_PROMPT = """
-You are Lumina AI.
+You are Lumixa AI.
 
 You are an intelligent Knowledge Assistant.
 
@@ -41,10 +41,36 @@ Rules:
 # Summary
 # ---------------------------------------------------------
 
-def summarize(text):
+def stream_llm_response(messages, temperature=0.3):
+    """
+    Unified reusable streaming utility for all LLM generations in Lumixa AI.
+    """
+    try:
+        response = client.chat.completions.create(
+            model=MODEL,
+            temperature=temperature,
+            messages=messages,
+            stream=True
+        )
+        for chunk in response:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+    except Exception as e:
+        yield f"Sorry, I encountered an error during generation: {e}"
+
+
+# ---------------------------------------------------------
+# Summary
+# ---------------------------------------------------------
+
+def summarize_stream(text):
+    # Truncate text if it is extremely long to prevent context-limit or timeout errors
+    words = text.split()
+    if len(words) > 12000:
+        text = " ".join(words[:12000]) + "\n\n[Content truncated for summary due to length limits]"
 
     prompt = f"""
-You are Lumina AI.
+You are Lumixa AI.
 
 Create a Summary of the following content.
 Summarize the context in detail
@@ -70,35 +96,21 @@ Content:
 
 {text}
 """
+    messages = [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
+    return stream_llm_response(messages, temperature=0.3)
 
-    try:
 
-        response = client.chat.completions.create(
-
-            model=MODEL,
-
-            temperature=0.3,
-
-            messages=[
-                {
-                    "role": "system",
-                    "content": SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-
-        )
-
-        return response.choices[0].message.content
-
-    except Exception as e:
-
-        print(f"LLM Error: {e}")
-
-    return "Unable to generate summary."
+def summarize(text):
+    return "".join(list(summarize_stream(text)))
 
 
 # ---------------------------------------------------------
@@ -106,7 +118,6 @@ Content:
 # ---------------------------------------------------------
 
 def generate_insights(summary):
-
     prompt = f"""
 Return ONLY valid JSON.
 
@@ -135,49 +146,30 @@ Summary
 
 {summary}
 """
-
+    messages = [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
     try:
-
-        response = client.chat.completions.create(
-
-            model=MODEL,
-
-            temperature=0.2,
-
-            messages=[
-                {
-                    "role": "system",
-                    "content": SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-
-        )
-
-        content = response.choices[0].message.content.strip()
-
+        content = "".join(list(stream_llm_response(messages, temperature=0.2))).strip()
         if content.startswith("```"):
-
             content = (
                 content
                 .replace("```json", "")
                 .replace("```", "")
                 .strip()
             )
-
         return json.loads(content)
-
     except Exception:
-
         return {
-
             "takeaways": [],
-
             "topics": []
-
         }
 
 
@@ -185,56 +177,36 @@ Summary
 # Chat
 # ---------------------------------------------------------
 
-def ask_question(
-
+def ask_question_stream(
     question,
-
     context,
-
     messages=None
-
 ):
-
     if messages is None:
-
         messages = []
 
     prompt = build_prompt(
-
         messages=messages,
-
         context=context,
-
         question=question
-
     )
 
-    try:
+    api_messages = [
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
+            "content": prompt
+        }
+    ]
+    return stream_llm_response(api_messages, temperature=0.2)
 
-        response = client.chat.completions.create(
 
-            model=MODEL,
-
-            temperature=0.2,
-
-            messages=[
-                {
-                    "role": "system",
-                    "content": SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
-
-        )
-
-        return response.choices[0].message.content
-
-    except Exception:
-
-        return (
-            "Sorry, I couldn't generate a response. "
-            "Please try again."
-        )
+def ask_question(
+    question,
+    context,
+    messages=None
+):
+    return "".join(list(ask_question_stream(question, context, messages)))

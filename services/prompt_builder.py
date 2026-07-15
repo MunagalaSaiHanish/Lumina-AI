@@ -22,7 +22,7 @@ def build_prompt(
 SYSTEM
 ========================
 
-You are Lumina AI.
+You are Lumixa AI.
 
 You are an intelligent Knowledge Assistant.
 
