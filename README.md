@@ -7,18 +7,16 @@ An AI-Powered Knowledge Assistant
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.11-blue?logo=python" />
+  <img src="https://img.shields.io/badge/Python-3.12-blue?logo=python" />
   <img src="https://img.shields.io/badge/Streamlit-Deployed-red?logo=streamlit" />
   <img src="https://img.shields.io/badge/FAISS-Vector%20Database-success" />
   <img src="https://img.shields.io/badge/Embeddings-all--MiniLM-orange" />
   <img src="https://img.shields.io/badge/LLM-Qwen-purple" />
   <img src="https://img.shields.io/badge/Version-V1-success" />
 </p>
----
 
-## 🌐 Deployed version
 
-🚀 **https://lumixa-ai.streamlit.app/**
+<p align="center">🚀 https://lumixa-ai.streamlit.app</p>
 
 ---
 # 📖 About
@@ -123,20 +121,26 @@ Throughout the development of **LUMIXA AI**, the following AI engineering skills
 <kbd>Vector Embeddings</kbd>
 <kbd>FAISS Vector Database</kbd>
 
+
+
 <kbd>Document Chunking</kbd>
 <kbd>Context Engineering</kbd>
 <kbd>Prompt Engineering</kbd>
 <kbd>Knowledge Base Design</kbd>
+
+
 
 <kbd>Retriever Pipeline</kbd>
 <kbd>Conversation Memory</kbd>
 <kbd>Metadata Management</kbd>
 <kbd>Streaming LLM Responses</kbd>
 
+
 <kbd>Sentence Transformers</kbd>
 <kbd>OpenRouter API</kbd>
 <kbd>Qwen LLM</kbd>
 <kbd>AI Application Development</kbd>
+
 
 <kbd>Multi-Source Knowledge Ingestion</kbd>
 <kbd>PDF Processing</kbd>
@@ -209,42 +213,58 @@ http://localhost:8501
 
 ---
 
-# 🚀 Usage
+# # 🚀 Usage
 
-### 🎥 Analyze a YouTube Video
+<table>
+<tr>
+<td width="25%" valign="top">
+
+### 🎥 YouTube
 
 1. Paste a YouTube URL.
 2. Click **Analyze Video**.
-3. View the AI-generated summary, key takeaways, and topics.
-4. Ask questions about the video using the chat interface.
+3. Generate AI summary.
+4. Chat with the video.
 
----
+</td>
 
-### 📄 Analyze a PDF
+<td width="25%" valign="top">
 
-1. Upload a PDF document.
-2. Wait for the document to be processed.
-3. Ask questions about the uploaded content.
-4. Generate and download an AI report.
+### 📄 PDF
 
----
+1. Upload a PDF.
+2. Process the document.
+3. Ask questions.
+4. Export AI report.
 
-### 🌐 Analyze a Website
+</td>
+
+<td width="25%" valign="top">
+
+### 🌐 Website
 
 1. Enter a website URL.
 2. Extract webpage content.
-3. Build a searchable knowledge base.
-4. Chat with the website content.
+3. Build knowledge base.
+4. Chat with the content.
 
----
+</td>
 
-### 📝 Add Custom Notes
+<td width="25%" valign="top">
 
-1. Enter or paste your own text.
+### 📝 Plain Text
+
+1. Paste custom text.
 2. Add it to the knowledge base.
-3. Ask questions and retrieve information from your notes.
+3. Ask questions.
+4. Retrieve information.
+
+</td>
+</tr>
+</table>
 
 ---
+
 
 # 🧠 AI Engineering Concepts
 
