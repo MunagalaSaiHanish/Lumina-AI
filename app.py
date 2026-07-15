@@ -53,7 +53,7 @@ from services.memory_service import (
 # page config
 st.set_page_config(
     page_title="Lumixa AI",
-    page_icon="◐",
+    page_icon="assets/icon.png",
     layout="wide",
     initial_sidebar_state="expanded"
 )

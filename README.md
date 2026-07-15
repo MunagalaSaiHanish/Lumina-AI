@@ -15,7 +15,6 @@ An AI-Powered Knowledge Assistant
   <img src="https://img.shields.io/badge/Version-V1-success" />
 </p>
 
-
 <p align="center">🚀 https://lumixa-ai.streamlit.app</p>
 
 ---
@@ -121,26 +120,20 @@ Throughout the development of **LUMIXA AI**, the following AI engineering skills
 <kbd>Vector Embeddings</kbd>
 <kbd>FAISS Vector Database</kbd>
 
-
-
 <kbd>Document Chunking</kbd>
 <kbd>Context Engineering</kbd>
 <kbd>Prompt Engineering</kbd>
 <kbd>Knowledge Base Design</kbd>
-
-
 
 <kbd>Retriever Pipeline</kbd>
 <kbd>Conversation Memory</kbd>
 <kbd>Metadata Management</kbd>
 <kbd>Streaming LLM Responses</kbd>
 
-
 <kbd>Sentence Transformers</kbd>
 <kbd>OpenRouter API</kbd>
 <kbd>Qwen LLM</kbd>
 <kbd>AI Application Development</kbd>
-
 
 <kbd>Multi-Source Knowledge Ingestion</kbd>
 <kbd>PDF Processing</kbd>
@@ -226,7 +219,6 @@ http://localhost:8501
 3. Generate AI summary.
 4. Chat with the video.
 
-
 </td>
 
 <td width="25%" valign="top">
@@ -265,7 +257,6 @@ http://localhost:8501
 </table>
 
 ---
-
 
 # 🧠 AI Engineering Concepts
 
