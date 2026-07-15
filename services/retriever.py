@@ -2,7 +2,6 @@ import numpy as np
 
 from services.embedding_service import model
 
-
 class Retriever:
 
     def __init__(
@@ -13,7 +12,6 @@ class Retriever:
 
         self.index = index
         self.vector_records = vector_records
-
 
     def search(
         self,

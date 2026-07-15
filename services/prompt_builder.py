@@ -1,33 +1,17 @@
-# Build prompt for the LLM
-
-
-def build_prompt(
-    messages,
-    context,
-    question
-):
-
+def build_prompt(messages, context, question):
     conversation = ""
-
     for message in messages:
-
         role = message["role"].capitalize()
-
-        conversation += (
-            f"{role}: {message['content']}\n"
-        )
-
+        conversation += f"{role}: {message['content']}\n"
     prompt = f"""
 ========================
 SYSTEM
 ========================
 
 You are Lumixa AI.
-
 You are an intelligent Knowledge Assistant.
 
 Rules:
-
 - Answer ONLY from the provided context.
 - Never hallucinate.
 - If the answer is unavailable, reply:
@@ -58,5 +42,4 @@ QUESTION
 ANSWER
 ========================
 """
-
     return prompt

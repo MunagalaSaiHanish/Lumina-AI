@@ -5,7 +5,6 @@ from services.embedding_service import generate_embeddings
 from services.vector_store import create_vector_store
 from services.retriever import Retriever
 
-
 class KnowledgeBase:
 
     def __init__(self):
@@ -13,7 +12,6 @@ class KnowledgeBase:
         self.vector_records = []
 
         self.index = None
-
 
     def add_document(
         self,
@@ -46,7 +44,6 @@ class KnowledgeBase:
             records
         )
 
-
     def add_chunks(
         self,
         chunks
@@ -59,7 +56,6 @@ class KnowledgeBase:
         self._add_records(
             chunks
         )
-
 
     def _add_records(
         self,
@@ -98,7 +94,6 @@ class KnowledgeBase:
                 embeddings
             )
 
-
     def retrieve(
         self,
         question,
@@ -118,7 +113,6 @@ class KnowledgeBase:
             question,
             top_k
         )
-
 
     def clear(self):
 

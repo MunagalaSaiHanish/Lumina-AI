@@ -3,10 +3,7 @@ import numpy as np
 
 from services.embedding_service import model
 
-
-# ---------------------------------------------------------
 # Create FAISS Vector Store
-# ---------------------------------------------------------
 
 def create_vector_store(embeddings):
 
@@ -26,10 +23,7 @@ def create_vector_store(embeddings):
 
     return index
 
-
-# ---------------------------------------------------------
 # Retrieve Documents
-# ---------------------------------------------------------
 
 def retrieve_documents(
     question,

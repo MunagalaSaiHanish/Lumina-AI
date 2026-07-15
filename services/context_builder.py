@@ -1,6 +1,5 @@
 # Build structured context for the LLM
 
-
 def build_context(documents):
 
     context_sections = []

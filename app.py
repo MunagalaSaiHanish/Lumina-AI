@@ -50,9 +50,7 @@ from services.memory_service import (
     MemoryService
 )
 
-# ---------------------------------------------------------------------------
-# Page config
-# ---------------------------------------------------------------------------
+# page config
 st.set_page_config(
     page_title="Lumixa AI",
     page_icon="◐",
@@ -60,20 +58,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ---------------------------------------------------------------------------
-# DESIGN CONCEPT — "the desk lamp"
-#
-# Lumixa turns raw material (video, PDF, page, notes) into something you
-# can actually read by. The visual idea: a scholar's desk at night — deep
-# ink-navy surfaces, a warm brass lamp-glow behind the wordmark, and every
-# finding treated like an annotated excerpt (a fine hairline rule, a small
-# mono "eyebrow" label) rather than a generic pill badge or purple gradient.
-#
-# Type system:
-#   Fraunces (serif, italic for the wordmark)  -> headings, brand
-#   Inter                                       -> body copy, inputs
-#   IBM Plex Mono                               -> eyebrows, tags, status
-# ---------------------------------------------------------------------------
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
@@ -452,7 +436,6 @@ div[data-testid="stChatMessage"]:has(.whatsapp-user-message) [data-testid="stCha
     flex-shrink:0 !important;
 }
 
-
 /* ---------- misc ---------- */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--ink-line); border-radius: 4px; }
@@ -511,9 +494,7 @@ html, body { overflow-x: hidden !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
-# Session state
-# ---------------------------------------------------------------------------
+# session state
 DEFAULT_STATE = {
     "knowledge_base": KnowledgeBase(),
     "memory": MemoryService(),
@@ -528,7 +509,6 @@ for key, value in DEFAULT_STATE.items():
     if key not in st.session_state:
         st.session_state[key] = value
 
-
 def clear_workspace():
     st.session_state.knowledge_base.clear()
     st.session_state.memory.clear()
@@ -538,10 +518,7 @@ def clear_workspace():
     st.session_state.transcript = ""
     st.session_state.metadata = None
 
-
-# ---------------------------------------------------------------------------
-# Sidebar — the lamp
-# ---------------------------------------------------------------------------
+# sidebar
 with st.sidebar:
     st.image("assets/logo.png", width="stretch")
     st.divider()
@@ -564,20 +541,16 @@ with st.sidebar:
         use_container_width=True
     )
 
-# ---------------------------------------------------------------------------
-# Main layout
-# ---------------------------------------------------------------------------
+# main layout
 center_panel, source_panel = st.columns([8, 2.5])
 
-# ---------------------------------------------------------------------------
-# Right panel — sources (the intake tray)
-# ---------------------------------------------------------------------------
+# right panel
 with source_panel:
     with st.container(height=566, border=True):
         st.subheader("Knowledge sources")
 
         video_url = st.text_input("Video URL", placeholder="https://www.youtube.com/watch?v=...")
-        uploaded_pdf = st.file_uploader("PDF", type=["pdf"])
+        uploaded_pdfs = st.file_uploader("PDFs", type=["pdf"], accept_multiple_files=True)
         website_url = st.text_input("Website URL", placeholder="https://example.com")
         notes_text = st.text_area(
             "Notes",
@@ -586,7 +559,6 @@ with source_panel:
         )
 
         analyze_clicked = st.button("Analyze sources", use_container_width=True, type="primary")
-
 
         if st.session_state.knowledge_base.index is None:
             st.markdown(
@@ -599,9 +571,7 @@ with source_panel:
                 unsafe_allow_html=True
             )
 
-# ---------------------------------------------------------------------------
-# Center panel — the reading pane
-# ---------------------------------------------------------------------------
+# center panel
 with center_panel:
     workspace_container = st.container(height=566, border=True)
     with workspace_container:
@@ -609,10 +579,7 @@ with center_panel:
         if not st.session_state.summary and not st.session_state.metadata and not analyze_clicked:
             st.info("Add a source on the right, then analyze it to begin.")
 
-        # -------------------------------------------------------------
-        # Analyze pipeline — every step wrapped so a single failed
-        # source can't crash the run or silently return a dead-end.
-        # -------------------------------------------------------------
+        # analyze pipeline
         if analyze_clicked:
             kb = st.session_state.knowledge_base
             kb.clear()
@@ -653,20 +620,29 @@ with center_panel:
                             st.error(f"Couldn't reach that video: {e}")
 
                 # PDF
-                if uploaded_pdf is not None:
-                    try:
-                        pdf_text = extract_pdf_text(uploaded_pdf)
-                        if pdf_text:
-                            kb.add_document(
-                                text=pdf_text,
-                                metadata={"source": "pdf", "title": uploaded_pdf.name, "file": uploaded_pdf.name}
-                            )
-                            combined_text += pdf_text + "\n\n"
-                            source_loaded = True
-                        else:
-                            st.warning(f"No readable text found in {uploaded_pdf.name}.")
-                    except Exception as e:
-                        st.error(f"Couldn't read that PDF: {e}")
+                if uploaded_pdfs:
+                    pdf_names = []
+                    for pdf_file in uploaded_pdfs:
+                        try:
+                            pdf_text = extract_pdf_text(pdf_file)
+                            if pdf_text:
+                                kb.add_document(
+                                    text=pdf_text,
+                                    metadata={"source": "pdf", "title": pdf_file.name, "file": pdf_file.name}
+                                )
+                                combined_text += pdf_text + "\n\n"
+                                source_loaded = True
+                                pdf_names.append(pdf_file.name)
+                            else:
+                                st.warning(f"No readable text found in {pdf_file.name}.")
+                        except Exception as e:
+                            st.error(f"Couldn't read PDF {pdf_file.name}: {e}")
+                    if pdf_names:
+                        st.session_state.metadata = {
+                            "source": "pdf",
+                            "title": "Uploaded Documents" if len(pdf_names) > 1 else pdf_names[0],
+                            "channel": f"{len(pdf_names)} PDF files loaded" if len(pdf_names) > 1 else "PDF Document"
+                        }
 
                 # Website
                 if website_url.strip():
@@ -697,7 +673,7 @@ with center_panel:
 
                 status.update(label="Analyzing Knowledge Complete.", state="complete")
 
-            # Stream Executive Summary directly to the workspace container
+            # summary
             try:
                 st.markdown('<div class="eyebrow">Generating Summary...</div>', unsafe_allow_html=True)
                 st.session_state.summary = st.write_stream(summarize_stream(combined_text))
@@ -719,9 +695,7 @@ with center_panel:
             st.success("Knowledge base ready.")
             st.rerun()
 
-        # -------------------------------------------------------------
-        # Metadata card
-        # -------------------------------------------------------------
+        # metadata card
         if st.session_state.metadata:
             with st.container(border=True):
                 metadata = st.session_state.metadata
@@ -737,13 +711,13 @@ with center_panel:
                     if metadata.get("url"):
                         st.markdown(f"[{metadata['url']}]({metadata['url']})")
 
-        # Summary
+        # summary
         if st.session_state.summary:
             with st.container(border=True):
                 st.markdown('<div class="eyebrow">Summary</div>', unsafe_allow_html=True)
                 st.write(st.session_state.summary)
 
-        # Takeaways & topics
+        # takeaways
         if st.session_state.takeaways or st.session_state.topics:
             t_col1, t_col2 = st.columns(2)
             with t_col1:
@@ -759,7 +733,7 @@ with center_panel:
                         tags_html = "".join(f"<span class='topic-tag'>{t}</span>" for t in st.session_state.topics)
                         st.markdown(tags_html, unsafe_allow_html=True)
 
-        # Export
+        # export
         if st.session_state.summary:
             with st.container(border=True):
                 st.markdown('<div class="eyebrow">Export</div>', unsafe_allow_html=True)
@@ -782,7 +756,7 @@ with center_panel:
                 except Exception as e:
                     st.error(f"Couldn't generate the PDF: {e}")
 
-        # Transcript
+        # transcript
         if st.session_state.transcript:
             with st.container(border=True):
                 st.markdown('<div class="eyebrow">Transcript</div>', unsafe_allow_html=True)
@@ -794,7 +768,7 @@ with center_panel:
                         label_visibility="collapsed"
                     )
 
-        # Chat history
+        # chat history
         if st.session_state.knowledge_base.index is not None:
             for message in st.session_state.memory.get_messages():
                 with st.chat_message(message["role"]):
@@ -802,7 +776,7 @@ with center_panel:
                         st.markdown('<div class="whatsapp-user-message"></div>', unsafe_allow_html=True)
                     st.write(message["content"])
 
-            # Handle active question and stream inside the workspace container
+            # handle active question
             if "active_question" in st.session_state:
                 active_q = st.session_state.active_question
                 with st.chat_message("user"):
@@ -848,7 +822,7 @@ with center_panel:
                         if citation_block:
                             st.markdown(citation_block)
 
-                    # Atomically add user message and generated response to memory
+                    # save to memory
                     memory.add_message("user", active_q)
                     memory.add_message("assistant", answer + citation_block)
 
@@ -858,11 +832,7 @@ with center_panel:
                 del st.session_state.active_question
                 st.rerun()
 
-# ---------------------------------------------------------------------------
-# Chat input — Streamlit's native chat input, anchored to the bottom of
-# the page by Streamlit itself (no manual floating container). This keeps
-# it from ever overlapping or eating into the reading pane's space.
-# ---------------------------------------------------------------------------
+# chat input
 question = st.chat_input("Ask Lumixa...")
 
 if question:

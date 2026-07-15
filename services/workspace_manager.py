@@ -1,6 +1,5 @@
 from services.models.workspace import Workspace
 
-
 class WorkspaceManager:
 
     def __init__(self):

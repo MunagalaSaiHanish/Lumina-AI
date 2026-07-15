@@ -6,10 +6,8 @@ def get_video_metadata(video_url):
             "quiet": True,
             "skip_download": True,
         }
-
         with YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(video_url, download=False)
-
         return {
             "source": "youtube",
             "title": info.get("title", ""),
@@ -17,10 +15,8 @@ def get_video_metadata(video_url):
             "thumbnail": info.get("thumbnail", ""),
             "url": video_url,
         }
-
     except Exception as e:
         print(e)
-
         return {
             "source": "youtube",
             "title": "Unknown Video",

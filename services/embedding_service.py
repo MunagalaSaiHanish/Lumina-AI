@@ -3,7 +3,6 @@ from sentence_transformers import SentenceTransformer
 # Global model instance
 _model = None
 
-
 def get_model():
     global _model
 
@@ -13,10 +12,8 @@ def get_model():
 
     return _model
 
-
 # Backward compatibility
 model = get_model()
-
 
 def generate_embeddings(chunks):
 
@@ -28,7 +25,6 @@ def generate_embeddings(chunks):
         convert_to_numpy=True,
         normalize_embeddings=True
     )
-
 
 def generate_document_embeddings(chunks):
 

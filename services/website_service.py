@@ -2,7 +2,6 @@ import requests
 
 from bs4 import BeautifulSoup
 
-
 def extract_website_text(url):
 
     if not url.strip():
