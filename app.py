@@ -48,935 +48,752 @@ from services.memory_service import (
     MemoryService
 )
 
-# ---------------------------------------------------------
-# Page Configuration
-# ---------------------------------------------------------
-
+# ---------------------------------------------------------------------------
+# Page config
+# ---------------------------------------------------------------------------
 st.set_page_config(
-
-
-    page_icon="asset/pdf lumina logo.png",
-
-    layout="wide"
-
+    page_title="Lumina AI",
+    page_icon="◐",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
-# ---------------------------------------------------------
-# Session State
-# ---------------------------------------------------------
+# ---------------------------------------------------------------------------
+# DESIGN CONCEPT — "the desk lamp"
+#
+# Lumina turns raw material (video, PDF, page, notes) into something you
+# can actually read by. The visual idea: a scholar's desk at night — deep
+# ink-navy surfaces, a warm brass lamp-glow behind the wordmark, and every
+# finding treated like an annotated excerpt (a fine hairline rule, a small
+# mono "eyebrow" label) rather than a generic pill badge or purple gradient.
+#
+# Type system:
+#   Fraunces (serif, italic for the wordmark)  -> headings, brand
+#   Inter                                       -> body copy, inputs
+#   IBM Plex Mono                               -> eyebrows, tags, status
+# ---------------------------------------------------------------------------
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
+:root {
+    --ink: #12141C;
+    --ink-raised: #1A1D28;
+    --ink-line: #2B2F3F;
+    --parchment: #ECE6D8;
+    --parchment-dim: #A8A395;
+    --slate: #838AA0;
+    --brass: #D8A54A;
+    --brass-soft: rgba(216, 165, 74, 0.14);
+    --ember: #E2704A;
+    --moss: #6FA287;
+}
+
+/* ---------- base ---------- */
+html, body, [data-testid="stAppViewContainer"], [data-testid="stApp"] {
+    height: 100vh;
+    overflow: hidden;
+    background: var(--ink) !important;
+    color: var(--parchment) !important;
+    font-family: 'Inter', sans-serif;
+}
+
+[data-testid="stSidebar"] {
+    background: #0D0F16 !important;
+    border-right: 1px solid var(--ink-line);
+}
+
+/* Streamlit's fixed top bar (Deploy / menu) sits as an overlay above
+   the content. We deliberately do NOT touch .block-container's
+   top padding — that's Streamlit's own built-in clearance for the
+   header, and overriding it is what hides content underneath the
+   bar. We only constrain overall height (to fit the viewport with
+   no page-level scroll) and the side/bottom padding. */
+[data-testid="stHeader"] {
+    background: var(--ink) !important;
+}
+
+.block-container {
+    height: calc(100vh - 3.5rem) !important;
+    max-height: calc(100vh - 3.5rem) !important;
+    padding-top: 3.9rem !important;
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+    padding-bottom: 0.5rem !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* The row holding the reading pane + source panel grows to fill
+   whatever vertical space is left after the header's own padding,
+   and each column stretches to full height so its card can fill it. */
+[data-testid="stMain"] [data-testid="stHorizontalBlock"] {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+}
+[data-testid="stMain"] [data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+[data-testid="stMain"] [data-testid="column"] > div[data-testid="stVerticalBlock"] {
+    height: 100% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+[data-testid="stMain"] [data-testid="column"] div[data-testid="stVerticalBlockBorderWrapper"] {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+}
+
+/* The two fixed-pixel-height cards (source intake + reading pane)
+   become fluid: they fill their column instead of a hardcoded
+   632px, and scroll internally — never the page — if their content
+   runs long. */
+[data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"] > div[style*="height"] {
+    height: 100% !important;
+    max-height: 100% !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+}
+
+[data-testid="stVerticalBlock"] { gap: 0.6rem; }
+
+h1, h2, h3 {
+    font-family: 'Fraunces', serif !important;
+    font-weight: 600 !important;
+    color: var(--parchment) !important;
+    letter-spacing: -0.01em;
+}
+
+p, span, label, div { color: var(--parchment); }
+
+a { color: var(--brass) !important; }
+
+hr { border-color: var(--ink-line) !important; }
+
+/* ---------- eyebrow labels (structural, not decorative) ---------- */
+.eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--brass);
+    margin: 0 0 0.35rem 0;
+}
+
+/* ---------- brand lockup: the lamp glow ---------- */
+.brand { position: relative; text-align: center; padding: 1.2rem 0 0.8rem; }
+.brand-glow {
+    position: absolute;
+    top: -18px; left: 50%;
+    transform: translateX(-50%);
+    width: 150px; height: 150px;
+    background: radial-gradient(circle, rgba(216,165,74,0.30), transparent 68%);
+    filter: blur(4px);
+    z-index: 0;
+}
+.brand-mark {
+    position: relative; z-index: 1;
+    font-family: 'Fraunces', serif;
+    font-style: italic;
+    font-weight: 600;
+    font-size: 1.85rem;
+    color: var(--parchment);
+}
+.brand-ai {
+    font-family: 'IBM Plex Mono', monospace;
+    font-style: normal;
+    font-size: 0.75rem;
+    color: var(--brass);
+    vertical-align: super;
+    margin-left: 3px;
+    letter-spacing: 0.05em;
+}
+.brand-tagline {
+    position: relative; z-index: 1;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.64rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--slate);
+    margin-top: 0.35rem;
+}
+
+/* ---------- cards / bordered containers ---------- */
+div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: var(--ink-raised) !important;
+    border: 1px solid var(--ink-line) !important;
+    border-top: 2px solid var(--brass) !important;
+    border-radius: 8px !important;
+}
+
+/* ---------- inputs ---------- */
+[data-testid="stTextInput"] input,
+[data-testid="stTextArea"] textarea {
+    background: var(--ink) !important;
+    color: var(--parchment) !important;
+    border: 1px solid var(--ink-line) !important;
+    border-radius: 6px !important;
+    font-family: 'Inter', sans-serif;
+}
+[data-testid="stTextInput"] input:focus,
+[data-testid="stTextArea"] textarea:focus {
+    border-color: var(--brass) !important;
+    box-shadow: 0 0 0 1px var(--brass) !important;
+}
+[data-testid="stTextInput"] label,
+[data-testid="stTextArea"] label,
+[data-testid="stFileUploader"] label {
+    font-family: 'IBM Plex Mono', monospace !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.06em;
+    color: var(--slate) !important;
+    text-transform: uppercase;
+}
+
+[data-testid="stFileUploader"] section {
+    background: var(--ink) !important;
+    border: 1px dashed var(--ink-line) !important;
+    border-radius: 6px !important;
+}
+
+/* ---------- buttons ---------- */
+[data-testid="stBaseButton-primary"], button[kind="primary"] {
+    background: var(--brass) !important;
+    color: var(--ink) !important;
+    border: none !important;
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    transition: box-shadow 0.15s ease;
+}
+[data-testid="stBaseButton-primary"]:hover, button[kind="primary"]:hover {
+    box-shadow: 0 0 14px rgba(216, 165, 74, 0.45);
+}
+[data-testid="stBaseButton-secondary"], button[kind="secondary"] {
+    background: transparent !important;
+    color: var(--parchment) !important;
+    border: 1px solid var(--ink-line) !important;
+    border-radius: 6px !important;
+}
+[data-testid="stBaseButton-secondary"]:hover, button[kind="secondary"]:hover {
+    border-color: var(--brass) !important;
+    color: var(--brass) !important;
+}
+
+/* ---------- status dot ---------- */
+.status-line {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+}
+.status-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 7px;
+}
+.status-dot--empty { background: var(--ember); }
+.status-dot--ready { background: var(--moss); box-shadow: 0 0 6px var(--moss); }
+
+/* ---------- topic tags (excerpt annotations, not pills) ---------- */
+.topic-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    background: var(--brass-soft);
+    color: var(--brass);
+    padding: 3px 9px;
+    margin: 3px 4px 3px 0;
+    display: inline-block;
+    border: 1px solid rgba(216, 165, 74, 0.3);
+    border-radius: 4px;
+}
+
+.channel-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--brass);
+    margin: 4px 0;
+}
+
+/* ---------- alerts ---------- */
+[data-testid="stAlert"] {
+    background: var(--ink-raised) !important;
+    border: 1px solid var(--ink-line) !important;
+    border-left: 3px solid var(--brass) !important;
+    border-radius: 6px !important;
+    color: var(--parchment) !important;
+}
+
+/* ---------- expander ---------- */
+[data-testid="stExpander"] {
+    border: 1px solid var(--ink-line) !important;
+    border-radius: 6px !important;
+    background: var(--ink) !important;
+}
+
+/* ---------- chat ---------- */
+[data-testid="stChatMessage"] {
+    background: var(--ink-raised) !important;
+    border: 1px solid var(--ink-line) !important;
+    border-radius: 8px !important;
+}
+[data-testid="stChatInput"] textarea {
+    background: var(--ink-raised) !important;
+    color: var(--parchment) !important;
+    border: 1px solid var(--ink-line) !important;
+}
+
+/* ---------- shrink the sticky bottom chat bar ----------
+   Streamlit reserves a fairly tall fixed strip at the bottom of the
+   viewport for st.chat_input by default. We compress every layer of
+   it — the outer fixed wrapper, the inner block container, the
+   textarea itself, and the send button — so it reads as a slim input
+   bar instead of a big footer eating into the page. */
+[data-testid="stBottom"] {
+    padding-top: 0.25rem !important;
+}
+[data-testid="stBottomBlockContainer"] {
+    padding: 0.35rem 1.5rem !important;
+}
+[data-testid="stChatInput"] {
+    min-height: 0 !important;
+}
+[data-testid="stChatInput"] textarea,
+[data-testid="stChatInputTextArea"] {
+    min-height: 2.1rem !important;
+    max-height: 2.1rem !important;
+    padding: 0.45rem 0.75rem !important;
+    font-size: 0.85rem !important;
+    line-height: 1.2 !important;
+}
+[data-testid="stChatInputSubmitButton"] {
+    height: 1.9rem !important;
+    width: 1.9rem !important;
+    min-height: 1.9rem !important;
+    align-self: center !important;
+}
+
+/* ---------- misc ---------- */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--ink-line); border-radius: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* Hard safety net: guarantee the chat input (now Streamlit's own
+   sticky-bottom bar, not a floated container) can never push the page
+   into horizontal scroll. */
+html, body { overflow-x: hidden !important; }
+
+[data-testid="stChatInput"],
+[data-testid="stChatInput"] > div,
+[data-testid="stChatInput"] textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* ===================== RESPONSIVE: TABLET (<=1024px) ===================== */
+/* Below this width the two panels stack instead of sitting
+   side-by-side, so there's no single viewport-height row to fit
+   them both into. We drop the no-scroll layout here and let the
+   page scroll normally, same as mobile. */
+@media (max-width: 1024px) {
+    html, body, [data-testid="stAppViewContainer"] { height: auto !important; overflow: auto !important; }
+    .block-container {
+        height: auto !important;
+        max-height: none !important;
+        padding-top: 3.9rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        padding-bottom: 3.5rem !important;
+        overflow: visible !important;
+        display: block !important;
+    }
+    [data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+        flex: none !important;
+    }
+    [data-testid="stHorizontalBlock"] > div { width: 100% !important; flex: 1 1 100% !important; height: auto !important; }
+    [data-testid="stMain"] [data-testid="column"] > div[data-testid="stVerticalBlock"] { height: auto !important; }
+    [data-testid="stMain"] [data-testid="column"] div[data-testid="stVerticalBlockBorderWrapper"] { flex: none !important; }
+    [data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"] > div[style*="height"] {
+        height: auto !important;
+        max-height: 60vh !important;
+    }
+}
+
+/* ===================== RESPONSIVE: MOBILE (<=640px) ===================== */
+@media (max-width: 640px) {
+    .block-container {
+        padding-top: 3.9rem !important;
+        padding-left: 0.6rem !important;
+        padding-right: 0.6rem !important;
+        padding-bottom: 3.5rem !important;
+    }
+    h3 { font-size: 1.05rem !important; }
+    .brand-mark { font-size: 1.5rem; }
+    .topic-tag { font-size: 0.64rem; padding: 2px 7px; }
+    [data-testid="stMain"] div[data-testid="stVerticalBlockBorderWrapper"] > div[style*="height"] {
+        height: auto !important;
+        max-height: 60vh !important;
+        overflow-y: auto !important;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------------------------
+# Session state
+# ---------------------------------------------------------------------------
 DEFAULT_STATE = {
-
     "knowledge_base": KnowledgeBase(),
-
     "memory": MemoryService(),
-
     "metadata": None,
-
     "summary": "",
-
     "takeaways": [],
-
     "topics": [],
-
-    "transcript": ""
-
+    "transcript": "",
 }
 
 for key, value in DEFAULT_STATE.items():
-
     if key not in st.session_state:
-
         st.session_state[key] = value
 
-# ---------------------------------------------------------
-# Transcript Dialog
-# ---------------------------------------------------------
 
-@st.dialog(
-    "📜 Transcript",
-    width="large"
-)
-def show_transcript():
-
-    st.text_area(
-
-        "",
-
-        st.session_state.transcript,
-
-        height=500
-
-    )
-
-# ---------------------------------------------------------
-# Header
-# ---------------------------------------------------------
-
-logo_col, title_col = st.columns([1,10])
-
-with logo_col:
-
-    st.image(
-
-        "assets/pdf lumina logo.png",
-
-        width=100
-
-    )
-
-st.divider()
-
-# ---------------------------------------------------------
-# Main Layout
-# ---------------------------------------------------------
-
-center_panel, source_panel = st.columns(
-
-    [5.5, 2]
-
-)
-
-# ---------------------------------------------------------
-# Sidebar
-# ---------------------------------------------------------
-
-with st.sidebar:
-
-    st.title("☰ Workspace")
-
-    st.divider()
-
-    st.subheader("Conversation")
-
-    if len(
-
-        st.session_state.memory.get_messages()
-
-    ) == 0:
-
-        st.caption(
-
-            "No conversation yet."
-
-        )
-
-    else:
-
-        st.success(
-
-            "Conversation Active"
-
-        )
-
-    st.divider()
-
-    if st.button(
-
-        "🗑 Clear Workspace",
-
-        use_container_width=True
-
-    ):
-
-        st.session_state.knowledge_base.clear()
-
-        st.session_state.memory.clear()
-
-        st.session_state.metadata = None
-
-        st.session_state.summary = ""
-
-        st.session_state.takeaways = []
-
-        st.session_state.topics = []
-
-        st.session_state.transcript = ""
-
-        st.rerun()
-
-# ---------------------------------------------------------
-# Knowledge Sources
-# ---------------------------------------------------------
-
-with source_panel:
-
-    st.subheader(
-
-        "Knowledge Sources"
-
-    )
-
-    st.markdown("---")
-
-    video_url = st.text_input(
-
-        "🎥 YouTube URL",
-
-        placeholder="https://youtube.com/..."
-
-    )
-
-    uploaded_pdf = st.file_uploader(
-
-        "📄 Upload PDF",
-
-        type=["pdf"]
-
-    )
-
-    website_url = st.text_input(
-
-        "🌐 Website URL",
-
-        placeholder="https://..."
-
-    )
-
-    notes_text = st.text_area(
-
-        "📝 Plain Text",
-
-        height=180,
-
-        placeholder="Paste notes, documentation or articles..."
-
-    )
-
-    st.markdown("")
-
-    analyze_clicked = st.button(
-
-        "🚀 Analyze",
-
-        use_container_width=True,
-
-        type="primary"
-
-    )
-
-    st.markdown("---")
-
-    st.subheader(
-
-        "Knowledge Base"
-
-    )
-
-    if st.session_state.knowledge_base.index is None:
-
-        st.warning(
-
-            "No Knowledge Loaded"
-
-        )
-
-    else:
-
-        st.success(
-
-            "Knowledge Base Ready"
-
-        )
-if analyze_clicked:
-
-    kb = st.session_state.knowledge_base
-
-    kb.clear()
-
+def clear_workspace():
+    st.session_state.knowledge_base.clear()
     st.session_state.memory.clear()
-
+    st.session_state.summary = ""
+    st.session_state.takeaways = []
+    st.session_state.topics = []
+    st.session_state.transcript = ""
     st.session_state.metadata = None
 
-    st.session_state.summary = ""
 
-    st.session_state.takeaways = []
+# ---------------------------------------------------------------------------
+# Sidebar — the lamp
+# ---------------------------------------------------------------------------
+with st.sidebar:
+    st.markdown("""
+        <div class="brand">
+            <div class="brand-glow"></div>
+            <div class="brand-mark">Lumina<span class="brand-ai">AI</span></div>
+            <div class="brand-tagline">Illuminate what you read</div>
+        </div>
+    """, unsafe_allow_html=True)
+    st.divider()
 
-    st.session_state.topics = []
+    st.markdown('<div class="eyebrow">Session</div>', unsafe_allow_html=True)
+    history_container = st.container(height=200)
+    with history_container:
+        messages = st.session_state.memory.get_messages()
+        if len(messages) == 0:
+            st.caption("No conversation yet.")
+        else:
+            conv_title = st.session_state.topics[0] if st.session_state.topics else "Current session"
+            st.button(conv_title, key="conv_btn_0", use_container_width=True)
 
-    st.session_state.transcript = ""
+    st.divider()
+    st.button(
+        "Clear workspace",
+        key="clear_workspace_btn",
+        on_click=clear_workspace,
+        use_container_width=True
+    )
 
-    source_loaded = False
+# ---------------------------------------------------------------------------
+# Main layout
+# ---------------------------------------------------------------------------
+center_panel, source_panel = st.columns([8, 2.5])
 
-    combined_text = ""
+# ---------------------------------------------------------------------------
+# Right panel — sources (the intake tray)
+# ---------------------------------------------------------------------------
+with source_panel:
+    with st.container(height=570, border=True):
+        st.markdown("Knowledge sources")
 
-    # ---------------------------------------------------------
-    # YouTube
-    # ---------------------------------------------------------
-
-    if video_url.strip():
-
-        video_id = extract_video_id(
-            video_url
+        video_url = st.text_input("Video URL", placeholder="https://www.youtube.com/watch?v=...")
+        uploaded_pdf = st.file_uploader("PDF", type=["pdf"])
+        website_url = st.text_input("Website URL", placeholder="https://example.com")
+        notes_text = st.text_area(
+            "Notes",
+            height=120,
+            placeholder="Paste notes, documentation, or any text here..."
         )
 
-        if video_id is None:
+        analyze_clicked = st.button("Analyze sources", use_container_width=True, type="primary")
 
-            st.error(
-                "Invalid YouTube URL."
+
+        if st.session_state.knowledge_base.index is None:
+            st.markdown(
+                '<div class="status-line"><span class="status-dot status-dot--empty"></span>No source loaded</div>',
+                unsafe_allow_html=True
             )
-
         else:
-
-            metadata = get_video_metadata(
-                video_url
+            st.markdown(
+                '<div class="status-line"><span class="status-dot status-dot--ready"></span>Knowledge base ready</div>',
+                unsafe_allow_html=True
             )
 
-            with st.spinner(
-                "Fetching Transcript..."
-            ):
+# ---------------------------------------------------------------------------
+# Center panel — the reading pane
+# ---------------------------------------------------------------------------
+with center_panel:
+    workspace_container = st.container(height=570, border=True)
+    with workspace_container:
 
-                transcript = get_transcript(
-                    video_id
-                )
+        if not st.session_state.summary and not st.session_state.metadata and not analyze_clicked:
+            st.info("Add a source on the right, then analyze it to begin.")
 
-            if transcript is None:
+        # -------------------------------------------------------------
+        # Analyze pipeline — every step wrapped so a single failed
+        # source can't crash the run or silently return a dead-end.
+        # -------------------------------------------------------------
+        if analyze_clicked:
+            kb = st.session_state.knowledge_base
+            kb.clear()
+            st.session_state.memory.clear()
+            st.session_state.metadata = None
+            st.session_state.summary = ""
+            st.session_state.takeaways = []
+            st.session_state.topics = []
+            st.session_state.transcript = ""
 
-                st.error(
-                    "Unable to fetch transcript."
-                )
+            source_loaded = False
+            combined_text = ""
 
-            else:
+            # YouTube
+            if video_url.strip():
+                video_id = extract_video_id(video_url)
+                if video_id is None:
+                    st.error("That doesn't look like a valid YouTube URL.")
+                else:
+                    try:
+                        metadata = get_video_metadata(video_url)
+                        with st.spinner("Fetching transcript..."):
+                            transcript = get_transcript(video_id)
+                        if transcript is None:
+                            st.error("This video has no transcript available.")
+                        else:
+                            transcript_text = transcript_to_text(transcript)
+                            st.session_state.transcript = transcript_text
+                            transcript_chunks = chunk_transcript(transcript_with_timestamps(transcript))
+                            for chunk in transcript_chunks:
+                                chunk["metadata"] = metadata
+                            kb.add_chunks(transcript_chunks)
+                            st.session_state.metadata = metadata
+                            combined_text += transcript_text + "\n\n"
+                            source_loaded = True
+                    except Exception as e:
+                        st.error(f"Couldn't reach that video: {e}")
 
-                transcript_text = transcript_to_text(
-                    transcript
-                )
+            # PDF
+            if uploaded_pdf is not None:
+                try:
+                    with st.spinner("Reading PDF..."):
+                        pdf_text = extract_pdf_text(uploaded_pdf)
+                    if pdf_text:
+                        kb.add_document(
+                            text=pdf_text,
+                            metadata={"source": "pdf", "title": uploaded_pdf.name, "file": uploaded_pdf.name}
+                        )
+                        combined_text += pdf_text + "\n\n"
+                        source_loaded = True
+                    else:
+                        st.warning(f"No readable text found in {uploaded_pdf.name}.")
+                except Exception as e:
+                    st.error(f"Couldn't read that PDF: {e}")
 
-                st.session_state.transcript = (
-                    transcript_text
-                )
+            # Website
+            if website_url.strip():
+                try:
+                    with st.spinner("Reading website..."):
+                        website_text = extract_website_text(website_url)
+                    if website_text:
+                        kb.add_document(
+                            text=website_text,
+                            metadata={"source": "website", "title": website_url, "url": website_url}
+                        )
+                        combined_text += website_text + "\n\n"
+                        source_loaded = True
+                    else:
+                        st.warning("No readable text found at that URL.")
+                except Exception as e:
+                    st.error(f"Couldn't reach that page: {e}")
 
-                transcript_chunks = chunk_transcript(
-
-                    transcript_with_timestamps(
-                        transcript
-                    )
-
-                )
-
-                for chunk in transcript_chunks:
-
-                    chunk["metadata"] = metadata
-
-                kb.add_chunks(
-                    transcript_chunks
-                )
-
-                st.session_state.metadata = metadata
-
-                combined_text += (
-                    transcript_text + "\n\n"
-                )
-
+            # Notes
+            if notes_text.strip():
+                kb.add_document(text=notes_text, metadata={"source": "notes", "title": "Notes"})
+                combined_text += notes_text + "\n\n"
                 source_loaded = True
 
-    # ---------------------------------------------------------
-    # PDF
-    # ---------------------------------------------------------
-
-    if uploaded_pdf is not None:
-
-        with st.spinner(
-            "Reading PDF..."
-        ):
-
-            pdf_text = extract_pdf_text(
-                uploaded_pdf
-            )
-
-        if pdf_text:
-
-            kb.add_document(
-
-                text=pdf_text,
-
-                metadata={
-
-                    "source": "pdf",
-
-                    "title": uploaded_pdf.name,
-
-                    "file": uploaded_pdf.name
-
-                }
-
-            )
-
-            combined_text += (
-
-                pdf_text + "\n\n"
-
-            )
-
-            source_loaded = True
-
-    # ---------------------------------------------------------
-    # Website
-    # ---------------------------------------------------------
-
-    if website_url.strip():
-
-        with st.spinner(
-            "Reading Website..."
-        ):
-
-            website_text = extract_website_text(
-                website_url
-            )
-
-        if website_text:
-
-            kb.add_document(
-
-                text=website_text,
-
-                metadata={
-
-                    "source": "website",
-
-                    "title": website_url,
-
-                    "url": website_url
-
-                }
-
-            )
-
-            combined_text += (
-
-                website_text + "\n\n"
-
-            )
-
-            source_loaded = True
-
-    # ---------------------------------------------------------
-    # Plain Text
-    # ---------------------------------------------------------
-
-    if notes_text.strip():
-
-        kb.add_document(
-
-            text=notes_text,
-
-            metadata={
-
-                "source": "notes",
-
-                "title": "Notes"
-
-            }
-
-        )
-
-        combined_text += (
-
-            notes_text + "\n\n"
-
-        )
-
-        source_loaded = True
-
-    # ---------------------------------------------------------
-    # Validation
-    # ---------------------------------------------------------
-
-    if not source_loaded:
-
-        st.warning(
-
-            "Please provide at least one knowledge source."
-
-        )
-
-        st.stop()
-    # ---------------------------------------------------------
-    # Default Metadata
-    # ---------------------------------------------------------
-
-    if st.session_state.metadata is None:
-
-        st.session_state.metadata = {
-
-            "source": "knowledge",
-
-            "title": "Knowledge Base",
-
-            "channel": "",
-
-            "thumbnail": "",
-
-            "url": ""
-
-        }
-
-    # ---------------------------------------------------------
-    # Generate Summary
-    # ---------------------------------------------------------
-
-    with st.spinner(
-
-        "Generating Summary..."
-
-    ):
-
-        summary = summarize(
-
-            combined_text
-
-        )
-
-    st.session_state.summary = summary
-
-    # ---------------------------------------------------------
-    # Generate Insights
-    # ---------------------------------------------------------
-
-    with st.spinner(
-
-        "Generating Insights..."
-
-    ):
-
-        insights = generate_insights(
-
-            summary
-
-        )
-
-    st.session_state.takeaways = insights.get(
-
-        "takeaways",
-
-        []
-
-    )
-
-    st.session_state.topics = insights.get(
-
-        "topics",
-
-        []
-
-    )
-
-    st.success(
-
-        "✅ Knowledge Base Ready"
-
-    )
-with center_panel:
-
-    # ---------------------------------------------------------
-    # Knowledge Information
-    # ---------------------------------------------------------
-
-    if st.session_state.metadata:
-
-        metadata = st.session_state.metadata
-
-        st.divider()
-
-        col1, col2 = st.columns([1, 3])
-
-        with col1:
-
-            thumbnail = metadata.get(
-                "thumbnail",
-                ""
-            )
-
-            if thumbnail:
-
-                st.image(
-                    thumbnail,
-                    use_container_width=True
-                )
-
-        with col2:
-
-            st.subheader(
-
-                metadata.get(
-                    "title",
-                    "Knowledge Base"
-                )
-
-            )
-
-            if metadata.get("channel"):
-
-                st.write(
-
-                    f"👤 {metadata['channel']}"
-
-                )
-
-            if metadata.get("url"):
-
-                st.write(
-
-                    metadata["url"]
-
-                )
-
-    # ---------------------------------------------------------
-    # Summary
-    # ---------------------------------------------------------
-
-    if st.session_state.summary:
-
-        st.divider()
-
-        st.subheader(
-
-            "📝 Executive Summary"
-
-        )
-
-        st.write(
-
-            st.session_state.summary
-
-        )
-
-    # ---------------------------------------------------------
-    # Key Takeaways
-    # ---------------------------------------------------------
-
-    if st.session_state.takeaways:
-
-        st.divider()
-
-        st.subheader(
-
-            "💡 Key Takeaways"
-
-        )
-
-        for takeaway in st.session_state.takeaways:
-
-            st.success(
-
-                takeaway
-
-            )
-
-    # ---------------------------------------------------------
-    # Main Topics
-    # ---------------------------------------------------------
-
-    if st.session_state.topics:
-
-        st.divider()
-
-        st.subheader(
-
-            "🧠 Main Topics"
-
-        )
-
-        cols = st.columns(2)
-
-        for index, topic in enumerate(
-
-            st.session_state.topics
-
-        ):
-
-            with cols[index % 2]:
-
-                st.info(
-
-                    topic
-
-                )
-
-    # ---------------------------------------------------------
-    # Export Report
-    # ---------------------------------------------------------
-
-    if st.session_state.summary:
-
-        st.divider()
-
-        st.subheader(
-
-            "📄 Export Report"
-
-        )
-
-        report_title = (
-
-            st.session_state.topics[0]
-
-            if st.session_state.topics
-
-            else "Lumina AI Report"
-
-        )
-
-        pdf = generate_pdf(
-
-            metadata=st.session_state.metadata,
-
-            topic=report_title,
-
-            summary=st.session_state.summary,
-
-            takeaways=st.session_state.takeaways,
-
-            topics=st.session_state.topics
-
-        )
-
-        st.download_button(
-
-            "⬇ Download PDF Report",
-
-            data=pdf,
-
-            file_name="Lumina_AI_Report.pdf",
-
-            mime="application/pdf",
-
-            use_container_width=True
-
-        )
-
-    # ---------------------------------------------------------
-    # Transcript
-    # ---------------------------------------------------------
-
-    if st.session_state.transcript:
-
-        st.divider()
-
-        st.subheader(
-
-            "📜 Transcript"
-
-        )
-
-        st.write(
-
-            "Transcript hidden for a cleaner interface."
-
-        )
-
-        if st.button(
-
-            "View Transcript",
-
-            use_container_width=True
-
-        ):
-
-            show_transcript()
-
-    # ---------------------------------------------------------
-    # Chat with Lumina
-    # ---------------------------------------------------------
-
-    if st.session_state.knowledge_base.index is not None:
-
-        st.divider()
-
-        st.subheader(
-
-            "💬 Ask Lumina"
-
-        )
-
+            if not source_loaded:
+                st.warning("Add at least one source before analyzing.")
+                st.stop()
+
+            try:
+                with st.spinner("Writing summary..."):
+                    st.session_state.summary = summarize(combined_text)
+            except Exception as e:
+                st.error(f"Couldn't generate a summary: {e}")
+                st.stop()
+
+            try:
+                with st.spinner("Finding takeaways..."):
+                    insights = generate_insights(st.session_state.summary)
+                st.session_state.takeaways = insights.get("takeaways", [])
+                st.session_state.topics = insights.get("topics", [])
+            except Exception as e:
+                st.warning(f"Summary is ready, but takeaways couldn't be generated: {e}")
+                st.session_state.takeaways = []
+                st.session_state.topics = []
+
+            st.success("Knowledge base ready.")
+            st.rerun()
+
+        # -------------------------------------------------------------
+        # Metadata card
+        # -------------------------------------------------------------
+        if st.session_state.metadata:
+            with st.container(border=True):
+                metadata = st.session_state.metadata
+                col1, col2 = st.columns([1.2, 3])
+                with col1:
+                    thumbnail = metadata.get("thumbnail", "")
+                    if thumbnail:
+                        st.image(thumbnail, use_container_width=True)
+                with col2:
+                    st.markdown(f"### {metadata.get('title', 'Knowledge Source')}")
+                    if metadata.get("channel"):
+                        st.markdown(f"<p class='channel-name'>{metadata['channel']}</p>", unsafe_allow_html=True)
+                    if metadata.get("url"):
+                        st.markdown(f"[{metadata['url']}]({metadata['url']})")
+
+        # Summary
+        if st.session_state.summary:
+            with st.container(border=True):
+                st.markdown('<div class="eyebrow">Summary</div>', unsafe_allow_html=True)
+                st.write(st.session_state.summary)
+
+        # Takeaways & topics
+        if st.session_state.takeaways or st.session_state.topics:
+            t_col1, t_col2 = st.columns(2)
+            with t_col1:
+                if st.session_state.takeaways:
+                    with st.container(border=True):
+                        st.markdown('<div class="eyebrow">Takeaways</div>', unsafe_allow_html=True)
+                        for takeaway in st.session_state.takeaways:
+                            st.write(f"— {takeaway}")
+            with t_col2:
+                if st.session_state.topics:
+                    with st.container(border=True):
+                        st.markdown('<div class="eyebrow">Topics</div>', unsafe_allow_html=True)
+                        tags_html = "".join(f"<span class='topic-tag'>{t}</span>" for t in st.session_state.topics)
+                        st.markdown(tags_html, unsafe_allow_html=True)
+
+        # Export
+        if st.session_state.summary:
+            with st.container(border=True):
+                st.markdown('<div class="eyebrow">Export</div>', unsafe_allow_html=True)
+                report_title = st.session_state.topics[0] if st.session_state.topics else "Lumina AI Report"
+                try:
+                    pdf = generate_pdf(
+                        metadata=st.session_state.metadata,
+                        topic=report_title,
+                        summary=st.session_state.summary,
+                        takeaways=st.session_state.takeaways,
+                        topics=st.session_state.topics
+                    )
+                    st.download_button(
+                        label="Download PDF",
+                        data=pdf,
+                        file_name=f"{report_title}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                except Exception as e:
+                    st.error(f"Couldn't generate the PDF: {e}")
+
+        # Transcript
+        if st.session_state.transcript:
+            with st.container(border=True):
+                st.markdown('<div class="eyebrow">Transcript</div>', unsafe_allow_html=True)
+                with st.expander("View transcript"):
+                    st.text_area(
+                        "Transcript",
+                        value=st.session_state.transcript,
+                        height=250,
+                        label_visibility="collapsed"
+                    )
+
+        # Chat history
+        if st.session_state.knowledge_base.index is not None:
+            for message in st.session_state.memory.get_messages():
+                with st.chat_message(message["role"]):
+                    st.write(message["content"])
+
+        active_chat_placeholder = st.container()
+
+# ---------------------------------------------------------------------------
+# Chat input — Streamlit's native chat input, anchored to the bottom of
+# the page by Streamlit itself (no manual floating container). This keeps
+# it from ever overlapping or eating into the reading pane's space.
+# ---------------------------------------------------------------------------
+question = st.chat_input("Ask about your sources...")
+
+if question:
+    if st.session_state.knowledge_base.index is None:
+        st.error("Add and analyze a source before asking a question.")
+    else:
         kb = st.session_state.knowledge_base
-
         memory = st.session_state.memory
+        memory.add_message("user", question)
 
-        # -----------------------------------------------------
-        # Previous Conversation
-        # -----------------------------------------------------
+        with active_chat_placeholder:
+            with st.chat_message("user"):
+                st.write(question)
 
-        for message in memory.get_messages():
+            try:
+                with st.spinner("Searching knowledge base..."):
+                    retrieved_documents = kb.retrieve(question=question, top_k=5)
+                    context_data = build_context(retrieved_documents)
 
-            with st.chat_message(
-
-                message["role"]
-
-            ):
-
-                st.markdown(
-
-                    message["content"]
-
-                )
-
-        # -----------------------------------------------------
-        # User Question
-        # -----------------------------------------------------
-
-        question = st.chat_input(
-
-            "Ask anything about your knowledge..."
-
-        )
-
-        if question:
-
-            memory.add_message(
-
-                "user",
-
-                question
-
-            )
-
-            with st.chat_message(
-
-                "user"
-
-            ):
-
-                st.markdown(
-
-                    question
-
-                )
-
-            # -------------------------------------------------
-            # Retrieve Context
-            # -------------------------------------------------
-
-            with st.spinner(
-
-                "Searching Knowledge Base..."
-
-            ):
-
-                retrieved_documents = kb.retrieve(
-
-                    question=question,
-
-                    top_k=5
-
-                )
-
-                context_data = build_context(
-
-                    retrieved_documents
-
-                )
-
-            # -------------------------------------------------
-            # LLM Response
-            # -------------------------------------------------
-
-            with st.spinner(
-
-                "Thinking..."
-
-            ):
-
-                answer = ask_question(
-
-                    question=question,
-
-                    context=context_data["context"],
-
-                    messages=memory.get_recent_messages()
-
-                )
-
-            memory.add_message(
-
-                "assistant",
-
-                answer
-
-            )
-
-            with st.chat_message(
-
-                "assistant"
-
-            ):
-
-                st.markdown(
-
-                    answer
-
-                )
-
-            # -------------------------------------------------
-            # Sources
-            # -------------------------------------------------
-
-            if context_data["sources"]:
-
-                st.caption(
-
-                    "📚 Sources"
-
-                )
-
-                for source in context_data["sources"]:
-
-                    st.write(
-
-                        f"• {source}"
-
+                with st.spinner("Thinking..."):
+                    answer = ask_question(
+                        question=question,
+                        context=context_data["context"],
+                        messages=memory.get_recent_messages()
                     )
+                memory.add_message("assistant", answer)
 
-            # -------------------------------------------------
-            # Video Timestamps
-            # -------------------------------------------------
+                with st.chat_message("assistant"):
+                    st.write(answer)
 
-            timestamps = []
+                if context_data["sources"]:
+                    st.markdown('<div class="eyebrow">Sources</div>', unsafe_allow_html=True)
+                    for source in context_data["sources"]:
+                        st.write(f"— {source}")
 
-            for document in retrieved_documents:
+                youtube_chunks = [doc for doc in retrieved_documents if "start" in doc]
+                if youtube_chunks:
+                    st.markdown('<div class="eyebrow">Mentioned in video</div>', unsafe_allow_html=True)
+                    displayed = set()
+                    for chunk in youtube_chunks:
+                        timestamp = int(chunk["start"])
+                        if timestamp in displayed:
+                            continue
+                        displayed.add(timestamp)
+                        minutes, seconds = timestamp // 60, timestamp % 60
+                        st.write(f"— {minutes:02}:{seconds:02}")
 
-                if "start" in document:
+            except Exception as e:
+                st.error(f"Couldn't answer that: {e}")
 
-                    timestamps.append(
-
-                        document
-
-                    )
-
-            if timestamps:
-
-                st.caption(
-
-                    "📍 Mentioned in Video"
-
-                )
-
-                shown = set()
-
-                for chunk in timestamps:
-
-                    start = int(
-
-                        chunk["start"]
-
-                    )
-
-                    if start in shown:
-
-                        continue
-
-                    shown.add(
-
-                        start
-
-                    )
-
-                    minutes = start // 60
-
-                    seconds = start % 60
-
-                    st.write(
-
-                        f"• {minutes:02}:{seconds:02}"
-
-                    )
+        st.rerun()

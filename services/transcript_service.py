@@ -19,7 +19,7 @@ def get_transcript(video_id):
         return None
 
 
-#convert transcript into plain text
+#convert transcript into plain tepython -c "import youtube_transcript_api; print(youtube_transcript_api.__file__)"xt
 
 def transcript_to_text(transcript):
 
