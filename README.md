@@ -289,7 +289,7 @@ JNTUH University, Hyderabad
 Aspiring AI Engineer passionate about building production-ready AI systems and mastering AI Engineering through hands-on projects.
 
 - 🌐 Live Demo: https://lumixa-ai.streamlit.app/
-- 💻 GitHub: https://github.com/YOUR_USERNAME
+- 💻 GitHub: https://github.com/MunagalaSaiHanish
 
 ---
 
