@@ -1,4 +1,5 @@
 from sentence_transformers import SentenceTransformer
+from config import EMBEDDING_MODEL
 
 # Global model instance
 _model = None
@@ -8,7 +9,7 @@ def get_model():
 
     if _model is None:
         print("Loading embedding model...")
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        _model = SentenceTransformer(EMBEDDING_MODEL)
 
     return _model
 

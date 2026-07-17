@@ -3,6 +3,7 @@ import json
 from dotenv import load_dotenv
 from openai import OpenAI
 from services.prompt_builder import build_prompt
+from config import LLM_MODEL, TEMPERATURE
 
 load_dotenv()
 
@@ -12,7 +13,7 @@ client = OpenAI(
     timeout=200
 )
 
-MODEL = os.getenv("OPENROUTER_MODEL", "qwen/qwen3-32b")
+MODEL = os.getenv("OPENROUTER_MODEL", LLM_MODEL)
 
 SYSTEM_PROMPT = """
 You are Lumixa AI.
@@ -26,7 +27,7 @@ Rules:
 - When possible, organize answers using bullet points.
 """
 
-def stream_llm_response(messages, temperature=0.3):
+def stream_llm_response(messages, temperature=TEMPERATURE):
     try:
         response = client.chat.completions.create(
             model=MODEL,

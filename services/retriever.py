@@ -1,6 +1,6 @@
 import numpy as np
-
 from services.embedding_service import model
+from config import TOP_K
 
 class Retriever:
 
@@ -16,7 +16,7 @@ class Retriever:
     def search(
         self,
         question,
-        top_k=3
+        top_k=TOP_K
     ):
 
         if self.index is None:

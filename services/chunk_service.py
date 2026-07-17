@@ -1,7 +1,7 @@
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from config import CHUNK_SIZE, CHUNK_OVERLAP
 
-CHUNK_SIZE = 1000
-CHUNK_OVERLAP = 200
+
 SEPARATORS = ["\n\n", "\n", ". ", " ", ""]
 
 def get_text_splitter():
